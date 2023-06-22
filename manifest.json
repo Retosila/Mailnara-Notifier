@@ -1,0 +1,23 @@
+{
+  "name": "Mail Notifier",
+  "version": "0.1",
+  "manifest_version": 3,
+  "description": "Notify of mailnara mail",
+  "author": "Retosila",
+  "action": {
+    "default_title": "Mail Notifier",
+    "default_popup": "popups/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.sds.co.kr/*"],
+      "js": ["scripts/watcher.js", "scripts/inject.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": ["https://slack.com/api/*", "https://mail.sds.co.kr/*"]
+}

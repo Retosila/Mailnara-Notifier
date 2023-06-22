@@ -1,1 +1,0 @@
-# Mailnara-Notifier

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        width: 600px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .hidden {
+        display: none;
+      }
+      input,
+      button {
+        padding: 10px;
+        font-size: 16px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mailnara Notifier v0.1</h1>
+    <input type="text" id="slack-api-token" placeholder="Slack API Token" />
+    <input type="text" id="slack-channel-id" placeholder="Slack Channel ID" />
+    <button id="save-settings">Save</button>
+    <button id="configure-settings" class="hidden">Re-configure</button>
+    <button id="watcher-toggle">Start Watching</button>
+    <script src="popup.js"></script>
+  </body>
+</html>
