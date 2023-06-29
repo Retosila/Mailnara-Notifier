@@ -1,4 +1,4 @@
-# Mailnara-Notifier v0.1
+# Mailnara-Notifier (메일나라 알리미) v0.1
 
 삼정데이타서비스에서 제공하는 기업메일 및 그룹웨어 서비스인 *[메일나라](https://www.mailnara.co.kr/)* 를 위한 알리미 앱(크롬 확장프로그램)입니다.  
 현재는 슬랙 API를 통한 알림 전송만 가능합니다.  
