@@ -59,16 +59,15 @@ window.onload = async () => {
   try {
     const [slackAPIToken, slackChannelID, isWatching, hasSavedSettings] =
       await Promise.all([
-        storage.get("slackAPIToken") ?? "",
-        storage.get("slackChannelID") ?? "",
-        storage.get("isWatching") ?? false,
-        storage.get("hasSavedSettings") ?? false,
+        (async () => (await storage.get("slackAPIToken")) ?? "")(),
+        (async () => (await storage.get("slackChannelID")) ?? "")(),
+        (async () => (await storage.get("isWatching")) ?? false)(),
+        (async () => (await storage.get("hasSavedSettings")) ?? false)(),
       ]);
 
     ui.slackAPITokenInput.value = slackAPIToken;
     ui.slackChannelIDInput.value = slackChannelID;
     ui.setWatcherButtonText(isWatching);
-
     ui.toggleConfigurationVisibility(hasSavedSettings);
 
     ui.slackAPITokenInput.addEventListener("input", () =>
