@@ -55,6 +55,13 @@ const ui = {
   },
 };
 
+document.addEventListener("DOMContentLoaded", function () {
+  const manifestData = chrome.runtime.getManifest();
+  const version = manifestData.version;
+
+  document.getElementById("version").textContent = `v${version}`;
+});
+
 window.onload = async () => {
   try {
     const [slackAPIToken, slackChannelID, isWatching, hasSavedSettings] =
