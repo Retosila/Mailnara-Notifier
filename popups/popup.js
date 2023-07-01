@@ -163,8 +163,10 @@ window.onload = async () => {
         await storage.set("isWatching", newWatcherState);
         ui.setWatcherButtonText(newWatcherState);
         if (newWatcherState === true) {
+          ui.configureButton.classList.add("hidden");
           alert("Start watching mailbox!");
         } else {
+          ui.configureButton.classList.remove("hidden");
           alert("Stop watching mailbox.");
         }
       } else {
