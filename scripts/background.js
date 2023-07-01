@@ -98,50 +98,46 @@ class MailNotificationService {
   }
 }
 
-let service;
-
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "update" || details.reason === "install") {
-    console.debug("onInstalled. Reason:" + details.reason);
+  console.debug("Service worker is newly installed. Reason: " + details.reason);
 
-    const manifest = chrome.runtime.getManifest();
-    const contentScripts = manifest.content_scripts;
+  const manifest = chrome.runtime.getManifest();
+  const contentScripts = manifest.content_scripts;
 
-    const executeScriptsInTabs = async (matchPattern, scripts) => {
-      const tabs = await chrome.tabs.query({ url: matchPattern });
-      tabs.forEach((tab) => {
-        scripts.forEach((script) => {
-          chrome.scripting.executeScript(
-            { target: { tabId: tab.id }, files: [script] },
-            () => {
-              if (chrome.runtime.lastError) {
-                console.error(chrome.runtime.lastError.message);
-              } else {
-                console.debug(
-                  `Script ${script} injected successfully into ${tab.url}.`
-                );
-              }
+  const executeScriptsInTabs = async (matchPattern, scripts) => {
+    const tabs = await chrome.tabs.query({ url: matchPattern });
+    tabs.forEach((tab) => {
+      scripts.forEach((script) => {
+        chrome.scripting.executeScript(
+          { target: { tabId: tab.id }, files: [script] },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError.message);
+            } else {
+              console.debug(
+                `Script ${script} injected successfully into ${tab.url}.`
+              );
             }
-          );
-        });
+          }
+        );
       });
-    };
-
-    contentScripts.forEach((contentScript) => {
-      const matchPatterns = contentScript.matches;
-      const scripts = contentScript.js;
-
-      matchPatterns.forEach((matchPattern) =>
-        executeScriptsInTabs(matchPattern, scripts)
-      );
     });
-  }
+  };
+
+  contentScripts.forEach((contentScript) => {
+    const matchPatterns = contentScript.matches;
+    const scripts = contentScript.js;
+
+    matchPatterns.forEach((matchPattern) =>
+      executeScriptsInTabs(matchPattern, scripts)
+    );
+  });
 
   console.info("Start to initialize service.");
 
   const notifier = new SlackNotifier();
   const tracker = new NotifiedMailTracker();
-  service = new MailNotificationService(notifier, tracker);
+  const service = new MailNotificationService(notifier, tracker);
 
   (async () => {
     try {
@@ -165,76 +161,79 @@ chrome.runtime.onInstalled.addListener((details) => {
       return;
     }
   })();
-});
 
-chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
-  if (message.event === "onWatcherStateChanged") {
-    if (!service) {
-      const warning = "Service is not initialized yet.";
-      console.warn(warning);
-      sendResponse({ ok: false, error: warning });
-      return;
-    }
+  const onWatcherStateChangedListener = (message, _, sendResponse) => {
+    if (message.event === "onWatcherStateChanged") {
+      if (!service) {
+        const warning = "Service is not initialized yet.";
+        console.warn(warning);
+        sendResponse({ ok: false, error: warning });
+        return;
+      }
 
-    const isWatching = message.data;
-    if (isWatching) {
-      service.run();
-      console.info("Start mail notification service...");
-    } else {
-      service.suspend();
-      console.info("Suspend mail notification service...");
-    }
-    sendResponse({ ok: true });
-  }
-});
-
-chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
-  if (message.event === "onSaveButtonClicked") {
-    console.debug("onSaveButtonClicked");
-    if (!message.data.slackAPIToken) {
-      console.error("Slack API Token is empty.");
-      return;
-    }
-
-    if (!message.data.slackChannelID) {
-      console.error("Slack ChannelID is empty.");
-    }
-
-    (async () => {
-      try {
-        await Promise.all([
-          storage.set("slackAPIToken", message.data.slackAPIToken),
-          storage.set("slackChannelID", message.data.slackChannelID),
-          storage.set("hasSavedSettings", true),
-        ]);
-
-        if (!service) {
-          console.warn("Service is not initialized yet.");
-          sendResponse({ ok: false });
-          return;
-        }
-
+      const isWatching = message.data;
+      if (isWatching) {
+        service.run();
+        console.info("Start mail notification service...");
+      } else {
         service.suspend();
-        await service.prepare();
-        console.info("Mail notification service is prepared.");
+        console.info("Suspend mail notification service...");
+      }
+      sendResponse({ ok: true });
+    }
+  };
 
-        sendResponse({ ok: true });
-      } catch (error) {
+  const onSaveButtonClickedListener = (message, _, sendResponse) => {
+    if (message.event === "onSaveButtonClicked") {
+      console.debug("onSaveButtonClicked");
+      if (!message.data.slackAPIToken) {
+        console.error("Slack API Token is empty.");
+        return;
+      }
+
+      if (!message.data.slackChannelID) {
+        console.error("Slack ChannelID is empty.");
+      }
+
+      (async () => {
         try {
           await Promise.all([
-            storage.remove("slackAPIToken"),
-            storage.remove("slackChannelID"),
-            storage.remove("hasSavedSettings"),
+            storage.set("slackAPIToken", message.data.slackAPIToken),
+            storage.set("slackChannelID", message.data.slackChannelID),
+            storage.set("hasSavedSettings", true),
           ]);
+
+          if (!service) {
+            console.warn("Service is not initialized yet.");
+            sendResponse({ ok: false });
+            return;
+          }
+
+          service.suspend();
+          await service.prepare();
+          console.info("Mail notification service is prepared.");
+
+          sendResponse({ ok: true });
         } catch (error) {
+          try {
+            await Promise.all([
+              storage.remove("slackAPIToken"),
+              storage.remove("slackChannelID"),
+              storage.remove("hasSavedSettings"),
+            ]);
+          } catch (error) {
+            console.error(error);
+          }
+
           console.error(error);
+          sendResponse({ ok: false, error: error });
         }
+      })();
 
-        console.error(error);
-        sendResponse({ ok: false, error: error });
-      }
-    })();
+      return true;
+    }
+  };
 
-    return true;
-  }
+  chrome.runtime.onMessage.addListener(onWatcherStateChangedListener);
+  chrome.runtime.onMessage.addListener(onSaveButtonClickedListener);
 });
