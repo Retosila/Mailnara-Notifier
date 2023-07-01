@@ -69,6 +69,11 @@ window.onload = async () => {
     ui.slackChannelIDInput.value = slackChannelID;
     ui.setWatcherButtonText(isWatching);
     ui.toggleConfigurationVisibility(hasSavedSettings);
+    if (isWatching) {
+      ui.configureButton.classList.add("hidden");
+    } else {
+      ui.configureButton.classList.remove("hidden");
+    }
 
     ui.slackAPITokenInput.addEventListener("input", () =>
       ui.checkInputFields()
