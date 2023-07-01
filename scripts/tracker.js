@@ -1,4 +1,6 @@
 class NotifiedMailTracker {
+  static instance;
+
   static SIZE = 500;
   static DATA_KEY = "notifiedMailHashes";
   static POINTER_KEY = "oldestNotifiedMailPointer";
@@ -7,19 +9,31 @@ class NotifiedMailTracker {
   pointer;
 
   constructor() {
+    if (NotifiedMailTracker.instance) {
+      return NotifiedMailTracker.instance;
+    }
+
     this.cache = new Array(NotifiedMailTracker.SIZE).fill(null);
     this.pointer = 0;
+
+    NotifiedMailTracker.instance = this;
+  }
+
+  async prepare() {
+    this.loadNotifiedMailList();
   }
 
   async loadNotifiedMailList() {
     try {
       await this.load();
-      console.log("Loaded the notified mail list successfully.");
-      console.log(this.cache);
+      console.info("Loaded the notified mail list successfully.");
+
+      const cachedHashes = this.cache.filter((item) => item !== null);
+      console.info(`Cached Hashes: ${cachedHashes.length}`);
+      console.debug(cachedHashes);
     } catch (error) {
-      console.error(
-        "An error occurred while loading the notified mail list:",
-        error
+      throw new Error(
+        `"An error occurred while loading the notified mail list: ${error}`
       );
     }
   }
@@ -27,11 +41,10 @@ class NotifiedMailTracker {
   async saveNotifiedMailList() {
     try {
       await this.save();
-      console.log("Saved the notified mail list successfully.");
+      console.info("Saved the notified mail list successfully.");
     } catch (error) {
-      console.error(
-        "An error occurred while saving the notified mail list:",
-        error
+      throw new Error(
+        `"An error occurred while saving the notified mail list: ${error}`
       );
     }
   }

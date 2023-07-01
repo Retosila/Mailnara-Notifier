@@ -1,7 +1,7 @@
 try {
   importScripts("lib/hash.js");
-} catch (e) {
-  console.log(`Failed to import scripts: ${e}`);
+} catch (error) {
+  console.error(`Failed to import script: ${error}`);
 }
 
 function formatMail(mail) {
@@ -10,7 +10,7 @@ function formatMail(mail) {
     return null;
   }
 
-  return `Title: ${mail.title}\nSender: ${mail.sender}\nContent: ${mail.content}\nTimestamp: ${mail.timestamp}\nSize: ${mail.size}`;
+  return `Title: ${mail.title}\nSender: ${mail.sender}\nContent: ${mail.content}`;
 }
 
 function verify(mail) {
@@ -21,3 +21,37 @@ function verify(mail) {
 function generateMD5Hash(str) {
   return MD5_hexhash(str);
 }
+
+const storage = {
+  get: (key) => {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([key], function (result) {
+        resolve(result[key]);
+      });
+    });
+  },
+
+  set: (key, value) => {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set({ [key]: value }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  },
+
+  remove: (key) => {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.remove([key], () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  },
+};

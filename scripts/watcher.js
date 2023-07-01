@@ -1,3 +1,13 @@
+const storage = {
+  get: (key) => {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([key], function (result) {
+        resolve(result[key]);
+      });
+    });
+  },
+};
+
 class Mail {
   sender;
   title;
@@ -31,16 +41,41 @@ class Config {
 }
 
 class MailWatcher {
+  static instance;
+
   observer;
   config;
   isWatching;
 
   constructor(config) {
-    const self = this;
+    if (MailWatcher.instance) {
+      return MailWatcher.instance;
+    }
+
     this.isWatching = false;
     this.config = config;
+    this.observer = null;
 
-    const observer = new MutationObserver(() => {
+    MailWatcher.instance = this;
+  }
+
+  async loadWatcherState() {
+    try {
+      this.isWatching = (await storage.get("isWatching")) ?? false;
+    } catch (error) {
+      throw new Error(`Failed to load watcher state: ${error}`);
+    }
+  }
+
+  startWatching() {
+    const self = this;
+
+    this.observer = new MutationObserver(() => {
+      // Check current injection script has valid context.
+      if (!chrome.runtime?.id) {
+        return;
+      }
+
       const isTargetUrl = self.checkCurrentUrlIsTarget(config);
       if (!isTargetUrl) {
         return;
@@ -53,8 +88,10 @@ class MailWatcher {
 
       const newMails = mailRows.map(self.createMail);
 
+      console.info(`Unread mails: ${newMails.length}`);
+
       newMails.forEach((newMail) => {
-        console.log(`Find unread mail - Title: ${newMail.title}`);
+        console.debug(newMail.title);
       });
 
       chrome.runtime.sendMessage({
@@ -63,25 +100,16 @@ class MailWatcher {
       });
     });
 
-    this.observer = observer;
-  }
-
-  async loadWatcherState() {
-    try {
-      this.isWatching = (await storage.get("isWatching")) ?? false;
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  startWatching() {
     this.observer.observe(document.body, { childList: true, subtree: true });
     this.isWatching = true;
   }
 
   stopWatching() {
-    this.observer.disconnect();
-    this.isWatching = false;
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+      this.isWatching = false;
+    }
   }
 
   checkCurrentUrlIsTarget(config) {
@@ -135,25 +163,3 @@ class MailWatcher {
     return new Mail(sender, title, content, timestamp, size);
   }
 }
-
-const storage = {
-  get: (key) => {
-    return new Promise((resolve) => {
-      chrome.storage.local.get([key], function (result) {
-        resolve(result[key]);
-      });
-    });
-  },
-
-  set: (key, value) => {
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.set({ [key]: value }, () => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve();
-        }
-      });
-    });
-  },
-};

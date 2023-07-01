@@ -27,29 +27,29 @@ const ui = {
   slackChannelIDInput: document.getElementById("slack-channel-id"),
   watchToggleButton: document.getElementById("watcher-toggle"),
 
-  checkInputFields: function () {
-    this.saveButton.disabled =
-      !this.slackAPITokenInput.value || !this.slackChannelIDInput.value;
+  checkInputFields: () => {
+    ui.saveButton.disabled =
+      !ui.slackAPITokenInput.value || !ui.slackChannelIDInput.value;
   },
 
-  toggleConfigurationVisibility: function (hasSavedSettings) {
+  toggleConfigurationVisibility: (hasSavedSettings) => {
     if (hasSavedSettings) {
-      this.saveButton.classList.add("hidden");
-      this.configureButton.classList.remove("hidden");
-      this.slackAPITokenInput.classList.add("hidden");
-      this.slackChannelIDInput.classList.add("hidden");
-      this.watchToggleButton.classList.remove("hidden");
+      ui.slackAPITokenInput.classList.add("hidden");
+      ui.slackChannelIDInput.classList.add("hidden");
+      ui.saveButton.classList.add("hidden");
+      ui.configureButton.classList.remove("hidden");
+      ui.watchToggleButton.classList.remove("hidden");
     } else {
-      this.saveButton.classList.remove("hidden");
-      this.configureButton.classList.add("hidden");
-      this.slackAPITokenInput.classList.remove("hidden");
-      this.slackChannelIDInput.classList.remove("hidden");
-      this.watchToggleButton.classList.add("hidden");
+      ui.slackAPITokenInput.classList.remove("hidden");
+      ui.slackChannelIDInput.classList.remove("hidden");
+      ui.saveButton.classList.remove("hidden");
+      ui.configureButton.classList.add("hidden");
+      ui.watchToggleButton.classList.add("hidden");
     }
   },
 
-  setWatcherButtonText: function (isWatching) {
-    this.watchToggleButton.textContent = isWatching
+  setWatcherButtonText: (isWatching) => {
+    ui.watchToggleButton.textContent = isWatching
       ? "Stop Watching"
       : "Start Watching";
   },
@@ -79,13 +79,26 @@ window.onload = async () => {
     ui.checkInputFields();
 
     ui.saveButton.addEventListener("click", async () => {
-      await Promise.all([
-        storage.set("slackAPIToken", ui.slackAPITokenInput.value),
-        storage.set("slackChannelID", ui.slackChannelIDInput.value),
-        storage.set("hasSavedSettings", true),
-      ]);
-
-      ui.toggleConfigurationVisibility(true);
+      chrome.runtime.sendMessage(
+        {
+          event: "onSaveButtonClicked",
+          data: {
+            slackAPIToken: ui.slackAPITokenInput.value.trim(),
+            slackChannelID: ui.slackChannelIDInput.value.trim(),
+          },
+        },
+        (response) => {
+          if (response.ok) {
+            ui.toggleConfigurationVisibility(true);
+            alert("Slack configuration is verified successfully.");
+          } else {
+            ui.slackAPITokenInput.value = "";
+            ui.slackChannelIDInput.value = "";
+            ui.checkInputFields();
+            alert("Failed to verify slack configuration.");
+          }
+        }
+      );
     });
 
     ui.configureButton.addEventListener("click", () => {
@@ -96,20 +109,66 @@ window.onload = async () => {
       const isWatching = await storage.get("isWatching");
       const newWatcherState = !isWatching;
 
-      const [tab] = await chrome.tabs.query({
-        url: ["https://mail.sds.co.kr/*"],
-      });
-
-      const response = await chrome.tabs.sendMessage(tab.id, {
+      let response = await chrome.runtime.sendMessage({
         event: "onWatcherStateChanged",
         data: newWatcherState,
       });
 
+      if (!response.ok) {
+        alert(`Error: ${response.error}`);
+        return;
+      }
+
+      const manifest = chrome.runtime.getManifest();
+      const contentScripts = manifest.content_scripts;
+      const matchPatterns = [];
+
+      contentScripts.forEach((contentScript) => {
+        contentScript.matches.forEach((match) => {
+          matchPatterns.push(match);
+        });
+      });
+
+      const tabs = await chrome.tabs.query({
+        url: matchPatterns,
+      });
+
+      console.info(`Queried tabs: ${tabs.length}`);
+      tabs.forEach((tab) => {
+        console.debug("Tab: " + tab.id);
+      });
+
+      if (tabs.length === 0) {
+        console.info("No matching tab found.");
+        alert(
+          `Cannot find any matching tabs.\nAt least one matching tab must exist in runtime:\n${matchPatterns}`
+        );
+
+        return;
+      }
+
+      // Only watch first tab.
+      const [tab] = tabs;
+
+      try {
+        response = await chrome.tabs.sendMessage(tab.id, {
+          event: "onWatcherStateChanged",
+          data: newWatcherState,
+        });
+      } catch (error) {
+        throw new Error(`Error sending message to tab: ${error}`);
+      }
+
       if (response.ok) {
-        ui.setWatcherButtonText(newWatcherState);
         await storage.set("isWatching", newWatcherState);
+        ui.setWatcherButtonText(newWatcherState);
+        if (newWatcherState === true) {
+          alert("Start watching mailbox!");
+        } else {
+          alert("Stop watching mailbox.");
+        }
       } else {
-        throw new Error("Invalid watcher state.");
+        throw new Error(response.error);
       }
     });
   } catch (error) {
