@@ -139,12 +139,23 @@ chrome.runtime.onInstalled.addListener((details) => {
   const tracker = new NotifiedMailTracker();
   const service = new MailNotificationService(notifier, tracker);
 
+  const checkServiceVitality = () => {
+    if (!service) {
+      console.error("Fatal error: service is missing.");
+      chrome.runtime.reload();
+      return;
+    }
+  };
+
+  checkServiceVitality();
+
   (async () => {
     try {
       const hasSavedSettings = (await storage.get("hasSavedSettings")) ?? false;
-      console.debug(`Has saved settings: ${hasSavedSettings}`);
+      console.debug(`hasSavedSettings: ${hasSavedSettings}`);
+      checkServiceVitality();
 
-      if (hasSavedSettings && service && !service.isPrepared) {
+      if (hasSavedSettings && !service.isPrepared) {
         console.info(
           "Slack API setting and service is intialized, but not prepared yet."
         );
@@ -164,12 +175,8 @@ chrome.runtime.onInstalled.addListener((details) => {
 
   const onWatcherStateChangedListener = (message, _, sendResponse) => {
     if (message.event === "onWatcherStateChanged") {
-      if (!service) {
-        const warning = "Service is not initialized yet.";
-        console.warn(warning);
-        sendResponse({ ok: false, error: warning });
-        return;
-      }
+      console.debug(`onWatcherStateChanged. Data: ${message.data}`);
+      checkServiceVitality();
 
       const isWatching = message.data;
       if (isWatching) {
@@ -179,13 +186,14 @@ chrome.runtime.onInstalled.addListener((details) => {
         service.suspend();
         console.info("Suspend mail notification service...");
       }
-      sendResponse({ ok: true });
+      sendResponse({ ok: true, error: null });
     }
   };
 
   const onSaveButtonClickedListener = (message, _, sendResponse) => {
     if (message.event === "onSaveButtonClicked") {
-      console.debug("onSaveButtonClicked");
+      console.debug(`onSaveButtonClicked. Data: ${message.data}`);
+
       if (!message.data.slackAPIToken) {
         console.error("Slack API Token is empty.");
         return;
@@ -195,6 +203,8 @@ chrome.runtime.onInstalled.addListener((details) => {
         console.error("Slack ChannelID is empty.");
       }
 
+      checkServiceVitality();
+
       (async () => {
         try {
           await Promise.all([
@@ -203,17 +213,11 @@ chrome.runtime.onInstalled.addListener((details) => {
             storage.set("hasSavedSettings", true),
           ]);
 
-          if (!service) {
-            console.warn("Service is not initialized yet.");
-            sendResponse({ ok: false });
-            return;
-          }
-
           service.suspend();
           await service.prepare();
           console.info("Mail notification service is prepared.");
 
-          sendResponse({ ok: true });
+          sendResponse({ ok: true, error: null });
         } catch (error) {
           try {
             await Promise.all([
