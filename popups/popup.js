@@ -30,21 +30,22 @@ const ui = {
   checkInputFields: () => {
     ui.saveButton.disabled =
       !ui.slackAPITokenInput.value || !ui.slackChannelIDInput.value;
+    ui.saveButton.classList.toggle("opacity-50", ui.saveButton.disabled);
   },
 
   toggleConfigurationVisibility: (hasSavedSettings) => {
     if (hasSavedSettings) {
-      ui.slackAPITokenInput.classList.add("hidden");
-      ui.slackChannelIDInput.classList.add("hidden");
-      ui.saveButton.classList.add("hidden");
-      ui.configureButton.classList.remove("hidden");
-      ui.watchToggleButton.classList.remove("hidden");
+      ui.hide(ui.slackAPITokenInput);
+      ui.hide(ui.slackChannelIDInput);
+      ui.hide(ui.saveButton);
+      ui.show(ui.configureButton);
+      ui.show(ui.watchToggleButton);
     } else {
-      ui.slackAPITokenInput.classList.remove("hidden");
-      ui.slackChannelIDInput.classList.remove("hidden");
-      ui.saveButton.classList.remove("hidden");
-      ui.configureButton.classList.add("hidden");
-      ui.watchToggleButton.classList.add("hidden");
+      ui.show(ui.slackAPITokenInput);
+      ui.show(ui.slackChannelIDInput);
+      ui.show(ui.saveButton);
+      ui.hide(ui.configureButton);
+      ui.hide(ui.watchToggleButton);
     }
   },
 
@@ -53,9 +54,17 @@ const ui = {
       ? "Stop Watching"
       : "Start Watching";
   },
+
+  hide: (element) => {
+    element.classList.add("hidden");
+  },
+
+  show: (element) => {
+    element.classList.remove("hidden");
+  },
 };
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   const manifestData = chrome.runtime.getManifest();
   const version = manifestData.version;
 
@@ -76,10 +85,12 @@ window.onload = async () => {
     ui.slackChannelIDInput.value = slackChannelID;
     ui.setWatcherButtonText(isWatching);
     ui.toggleConfigurationVisibility(hasSavedSettings);
-    if (isWatching) {
-      ui.configureButton.classList.add("hidden");
+    if (hasSavedSettings && isWatching) {
+      ui.hide(ui.configureButton);
+    } else if (hasSavedSettings && !isWatching) {
+      ui.show(ui.configureButton);
     } else {
-      ui.configureButton.classList.remove("hidden");
+      ui.hide(ui.configureButton);
     }
 
     ui.slackAPITokenInput.addEventListener("input", () =>
@@ -175,10 +186,10 @@ window.onload = async () => {
         await storage.set("isWatching", newWatcherState);
         ui.setWatcherButtonText(newWatcherState);
         if (newWatcherState === true) {
-          ui.configureButton.classList.add("hidden");
+          ui.hide(ui.configureButton);
           alert("Start watching mailbox!");
         } else {
-          ui.configureButton.classList.remove("hidden");
+          ui.show(ui.configureButton);
           alert("Stop watching mailbox.");
         }
       } else {

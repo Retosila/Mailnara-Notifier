@@ -3,30 +3,45 @@
   <head>
     <style>
       body {
-        width: 600px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-      }
-      .hidden {
-        display: none;
-      }
-      input,
-      button {
-        padding: 10px;
-        font-size: 16px;
-        width: 100%;
+        width: 500px;
       }
     </style>
+    <link href="lib/tailwind.css" rel="stylesheet" />
   </head>
-  <body>
-    <h1>Mailnara Notifier <span id="version"></span></h1>
-    <input type="text" id="slack-api-token" placeholder="Slack API Token" />
-    <input type="text" id="slack-channel-id" placeholder="Slack Channel ID" />
-    <button id="save-settings">Save</button>
-    <button id="configure-settings" class="hidden">Re-configure</button>
-    <button id="watcher-toggle">Start Watching</button>
+  <body class="flex flex-col items-center space-y-4 p-6 bg-gray-200 mx-auto">
+    <h1 class="text-3xl font-bold mb-4 text-gray-700">
+      Mailnara Notifier <span id="version" class="text-sm"></span>
+    </h1>
+    <input
+      type="text"
+      id="slack-api-token"
+      placeholder="Slack API Token"
+      class="px-3 py-2 w-full border border-gray-300 rounded-md"
+    />
+    <input
+      type="text"
+      id="slack-channel-id"
+      placeholder="Slack Channel ID"
+      class="px-3 py-2 w-full border border-gray-300 rounded-md"
+    />
+    <button
+      id="save-settings"
+      class="px-3 py-2 w-full bg-blue-600 text-white rounded-md"
+    >
+      Save
+    </button>
+    <button
+      id="configure-settings"
+      class="px-3 py-2 w-full bg-blue-600 text-white rounded-md"
+    >
+      Re-configure
+    </button>
+    <button
+      id="watcher-toggle"
+      class="px-3 py-2 w-full bg-blue-600 text-white rounded-md"
+    >
+      Start Watching
+    </button>
     <script src="popup.js"></script>
   </body>
 </html>
