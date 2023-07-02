@@ -40,7 +40,7 @@ class MailNotificationService {
     self.listener = (message) => {
       if (message.event === "onNewMailsReceived") {
         if (!self.notifier || !self.tracker) {
-          console.warn("Notifier or Tracker is not initialized");
+          console.error("Notifier or Tracker is not initialized");
           return;
         }
 
@@ -73,7 +73,7 @@ class MailNotificationService {
               try {
                 await self.notifier.notify(formattedMail);
               } catch (error) {
-                console.warn(error);
+                console.warn(`Failed to notify mail: ${error}`);
                 return;
               }
             })();
@@ -168,7 +168,7 @@ chrome.runtime.onInstalled.addListener((details) => {
         console.info("Start mail notification service...");
       }
     } catch (error) {
-      console.error(error);
+      console.error(`Failed to run service: ${error}`);
       return;
     }
   })();
@@ -226,10 +226,10 @@ chrome.runtime.onInstalled.addListener((details) => {
               storage.remove("hasSavedSettings"),
             ]);
           } catch (error) {
-            console.error(error);
+            console.error(`Failed to remove key from storage: ${error}`);
           }
 
-          console.error(error);
+          console.info(`Failed to save slack configuration: ${error}`);
           sendResponse({ ok: false, error: error });
         }
       })();
