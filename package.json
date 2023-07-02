@@ -1,0 +1,10 @@
+{
+  "name": "mail-notifier",
+  "author": "Retosila",
+  "version": "0.2.2",
+  "description": "Notify of mailnara mail",
+  "scripts": {
+    "build": "npx tailwindcss build -i src/styles.css -o popups/style.css"
+  },
+  "license": "Apache-2.0"
+}
