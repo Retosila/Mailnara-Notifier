@@ -10,7 +10,7 @@
 
 ```
 $ npm install
-$ npm run buil
+$ npm run build
 ```
 
 `Settings > Extensions > Extension Manager`로 이동 후 `Developer Mode`를 활성화 시켜준다음 `Load unpacked` 버튼을 클릭해주세요.  
