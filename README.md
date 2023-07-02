@@ -28,4 +28,7 @@ $ npm run build
 **읽지 않은 메일이더라도 이미 알림을 보낸 메일인 경우 중복해서 알림을 보내지 않습니다.*  
 **개인적인 목적으로 제작한 것으로 삼정데이타서비스 전용 도메인(https://mail.sds.co.kr) 으로만 사용 가능합니다.*  
 **만약 메일나라를 사용 중인 다른 기업 회원이시라면 manifest.json 및 scripts/inject.js 파일을 환경에 맞게 변경 후 사용해주세요.*  
-**쿼리셀렉터를 통해 DOM 요소를 직접 크롤링하는 방식이기에 메일나라 내부 변경사항 발생 시 예기치 못하게 작동이 안 될 가능성이 있습니다.*
+**쿼리셀렉터를 통해 DOM 요소를 직접 크롤링하는 방식이기에 메일나라 내부 변경사항 발생 시 예기치 못하게 작동이 안 될 가능성이 있습니다.*  
+
+
+<a href="https://www.flaticon.com/free-icons/notify" title="notify icons">Notify icons created by Md Tanvirul Haque - Flaticon</a>
