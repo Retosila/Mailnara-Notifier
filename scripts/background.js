@@ -37,8 +37,10 @@ class MailNotificationService {
   run() {
     const self = this;
 
-    self.listener = (message) => {
+    this.listener = (message, _, sendResponse) => {
       if (message.event === "onNewMailsReceived") {
+        sendResponse({ ok: true });
+
         if (!self.notifier || !self.tracker) {
           console.error("Notifier or Tracker is not initialized");
           return;
@@ -66,28 +68,33 @@ class MailNotificationService {
             console.debug("Already notified.");
             return;
           }
+          self.tracker.add(hash);
 
           const formattedMail = formatMail(newMail);
           if (formattedMail) {
             (async () => {
               try {
                 await self.notifier.notify(formattedMail);
+                console.info("Notified successfully.");
+                console.debug(`Notified mail:\n${formattedMail}`);
               } catch (error) {
                 console.warn(`Failed to notify mail: ${error}`);
+                self.tracker.rollback();
                 return;
               }
-            })();
-            console.info("Notified successfully.");
-            console.debug(`Notified mail:\n${formattedMail}`);
 
-            self.tracker.add(hash);
-            self.tracker.saveNotifiedMailList();
+              try {
+                self.tracker.saveNotifiedMailList();
+              } catch (error) {
+                console.error(`Failed to save notified mail list: ${error}`);
+              }
+            })();
           }
         });
       }
     };
 
-    chrome.runtime.onMessage.addListener(self.listener);
+    chrome.runtime.onMessage.addListener(this.listener);
   }
 
   suspend() {
@@ -112,7 +119,7 @@ chrome.runtime.onInstalled.addListener((details) => {
           { target: { tabId: tab.id }, files: [script] },
           () => {
             if (chrome.runtime.lastError) {
-              console.error(chrome.runtime.lastError.message);
+              console.debug(chrome.runtime.lastError.message);
             } else {
               console.debug(
                 `Script ${script} injected successfully into ${tab.url}.`
@@ -173,26 +180,9 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   })();
 
-  const onWatcherStateChangedListener = (message, _, sendResponse) => {
-    if (message.event === "onWatcherStateChanged") {
-      console.debug(`onWatcherStateChanged. Data: ${message.data}`);
-      checkServiceVitality();
-
-      const isWatching = message.data;
-      if (isWatching) {
-        service.run();
-        console.info("Start mail notification service...");
-      } else {
-        service.suspend();
-        console.info("Suspend mail notification service...");
-      }
-      sendResponse({ ok: true, error: null });
-    }
-  };
-
   const onSaveButtonClickedListener = (message, _, sendResponse) => {
     if (message.event === "onSaveButtonClicked") {
-      console.debug(`onSaveButtonClicked. Data: ${message.data}`);
+      console.debug("onSaveButtonClicked.");
 
       if (!message.data.slackAPIToken) {
         console.error("Slack API Token is empty.");
@@ -215,9 +205,6 @@ chrome.runtime.onInstalled.addListener((details) => {
 
           service.suspend();
           await service.prepare();
-          console.info("Mail notification service is prepared.");
-
-          sendResponse({ ok: true, error: null });
         } catch (error) {
           try {
             await Promise.all([
@@ -226,18 +213,40 @@ chrome.runtime.onInstalled.addListener((details) => {
               storage.remove("hasSavedSettings"),
             ]);
           } catch (error) {
-            console.error(`Failed to remove key from storage: ${error}`);
+            throw new Error(`Failed to remove key from storage: ${error}`);
           }
-
-          console.info(`Failed to save slack configuration: ${error}`);
-          sendResponse({ ok: false, error: error });
         }
-      })();
+      })()
+        .then(() => {
+          sendResponse({ ok: true });
+          console.info("Mail notification service is prepared.");
+        })
+        .catch((error) => {
+          sendResponse({ ok: false, error: error });
+          console.info(`Failed to save slack configuration: ${error}`);
+        });
+    }
 
-      return true;
+    return true;
+  };
+
+  const onWatcherStateChangedListener = (message, _, sendResponse) => {
+    if (message.event === "onWatcherStateChanged") {
+      console.debug(`onWatcherStateChanged. New state: ${message.data}`);
+      checkServiceVitality();
+
+      const isWatching = message.data;
+      if (isWatching) {
+        service.run();
+        console.info("Start mail notification service...");
+      } else {
+        service.suspend();
+        console.info("Suspend mail notification service...");
+      }
+      sendResponse({ ok: true });
     }
   };
 
-  chrome.runtime.onMessage.addListener(onWatcherStateChangedListener);
   chrome.runtime.onMessage.addListener(onSaveButtonClickedListener);
+  chrome.runtime.onMessage.addListener(onWatcherStateChangedListener);
 });

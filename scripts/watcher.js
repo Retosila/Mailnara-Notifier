@@ -94,10 +94,31 @@ class MailWatcher {
         console.debug(newMail.title);
       });
 
-      chrome.runtime.sendMessage({
-        event: "onNewMailsReceived",
-        data: newMails,
-      });
+      try {
+        chrome.runtime.sendMessage(
+          {
+            event: "onNewMailsReceived",
+            data: newMails,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.debug(
+                `Runtime error: ${chrome.runtime.lastError.message}`
+              );
+              return;
+            }
+
+            if (!response.ok) {
+              console.error(`Invalid response: ${response.error}`);
+              return;
+            }
+
+            console.debug("Success to pass new mails to notifier.");
+          }
+        );
+      } catch (error) {
+        console.debug(`Failed to pass new mails to notifier: ${error}`);
+      }
     });
 
     this.observer.observe(document.body, { childList: true, subtree: true });

@@ -20,58 +20,64 @@ const storage = {
   },
 };
 
-const ui = {
-  configureButton: document.getElementById("configure-settings"),
-  saveButton: document.getElementById("save-settings"),
-  slackAPITokenInput: document.getElementById("slack-api-token"),
-  slackChannelIDInput: document.getElementById("slack-channel-id"),
-  watchToggleButton: document.getElementById("watcher-toggle"),
-
-  checkInputFields: () => {
-    ui.saveButton.disabled =
-      !ui.slackAPITokenInput.value || !ui.slackChannelIDInput.value;
-    ui.saveButton.classList.toggle("opacity-50", ui.saveButton.disabled);
-  },
-
-  toggleConfigurationVisibility: (hasSavedSettings) => {
-    if (hasSavedSettings) {
-      ui.hide(ui.slackAPITokenInput);
-      ui.hide(ui.slackChannelIDInput);
-      ui.hide(ui.saveButton);
-      ui.show(ui.configureButton);
-      ui.show(ui.watchToggleButton);
-    } else {
-      ui.show(ui.slackAPITokenInput);
-      ui.show(ui.slackChannelIDInput);
-      ui.show(ui.saveButton);
-      ui.hide(ui.configureButton);
-      ui.hide(ui.watchToggleButton);
-    }
-  },
-
-  setWatcherButtonText: (isWatching) => {
-    ui.watchToggleButton.textContent = isWatching
-      ? "Stop Watching"
-      : "Start Watching";
-  },
-
-  hide: (element) => {
-    element.classList.add("hidden");
-  },
-
-  show: (element) => {
-    element.classList.remove("hidden");
-  },
-};
+let ui;
 
 document.addEventListener("DOMContentLoaded", () => {
-  const manifestData = chrome.runtime.getManifest();
-  const version = manifestData.version;
+  ui = {
+    configureButton: document.getElementById("configure-settings"),
+    saveButton: document.getElementById("save-settings"),
+    slackAPITokenInput: document.getElementById("slack-api-token"),
+    slackChannelIDInput: document.getElementById("slack-channel-id"),
+    watchToggleButton: document.getElementById("watcher-toggle"),
 
-  document.getElementById("version").textContent = `v${version}`;
+    checkInputFields: () => {
+      ui.saveButton.disabled =
+        !ui.slackAPITokenInput.value || !ui.slackChannelIDInput.value;
+      ui.saveButton.classList.toggle("opacity-50", ui.saveButton.disabled);
+    },
+
+    toggleConfigurationVisibility: (hasSavedSettings) => {
+      if (hasSavedSettings) {
+        ui.hide(ui.slackAPITokenInput);
+        ui.hide(ui.slackChannelIDInput);
+        ui.hide(ui.saveButton);
+        ui.show(ui.configureButton);
+        ui.show(ui.watchToggleButton);
+      } else {
+        ui.show(ui.slackAPITokenInput);
+        ui.show(ui.slackChannelIDInput);
+        ui.show(ui.saveButton);
+        ui.hide(ui.configureButton);
+        ui.hide(ui.watchToggleButton);
+      }
+    },
+
+    setWatcherButtonText: (isWatching) => {
+      ui.watchToggleButton.textContent = isWatching
+        ? "Stop Watching"
+        : "Start Watching";
+    },
+
+    hide: (element) => {
+      element.classList.add("hidden");
+    },
+
+    show: (element) => {
+      element.classList.remove("hidden");
+    },
+  };
+
+  try {
+    const manifestData = chrome.runtime.getManifest();
+    const version = manifestData.version;
+
+    document.getElementById("version").textContent = `v${version}`;
+  } catch (error) {
+    console.error("Error while getting manifest data: ", error);
+  }
 });
 
-window.onload = async () => {
+async function loadSlackSettings() {
   try {
     const [slackAPIToken, slackChannelID, isWatching, hasSavedSettings] =
       await Promise.all([
@@ -85,6 +91,7 @@ window.onload = async () => {
     ui.slackChannelIDInput.value = slackChannelID;
     ui.setWatcherButtonText(isWatching);
     ui.toggleConfigurationVisibility(hasSavedSettings);
+
     if (hasSavedSettings && isWatching) {
       ui.hide(ui.configureButton);
     } else if (hasSavedSettings && !isWatching) {
@@ -92,16 +99,21 @@ window.onload = async () => {
     } else {
       ui.hide(ui.configureButton);
     }
+  } catch (error) {
+    throw new Error(`Error while loading Slack settings: ${error}`);
+  }
+}
 
-    ui.slackAPITokenInput.addEventListener("input", () =>
-      ui.checkInputFields()
-    );
-    ui.slackChannelIDInput.addEventListener("input", () =>
-      ui.checkInputFields()
-    );
-    ui.checkInputFields();
+async function initListeners() {
+  ui.slackAPITokenInput.addEventListener("input", () => ui.checkInputFields());
+  ui.slackChannelIDInput.addEventListener("input", () => ui.checkInputFields());
+  ui.configureButton.addEventListener("click", () => {
+    ui.toggleConfigurationVisibility(false);
+  });
+  ui.checkInputFields();
 
-    ui.saveButton.addEventListener("click", async () => {
+  ui.saveButton.addEventListener("click", async () => {
+    try {
       chrome.runtime.sendMessage(
         {
           event: "onSaveButtonClicked",
@@ -111,93 +123,154 @@ window.onload = async () => {
           },
         },
         (response) => {
-          if (response.ok) {
-            ui.toggleConfigurationVisibility(true);
-            alert("Slack configuration is verified successfully.");
-          } else {
+          if (chrome.runtime.lastError) {
+            console.debug(`Runtime error: ${chrome.runtime.lastError.message}`);
+            return;
+          }
+
+          if (!response.ok) {
             ui.slackAPITokenInput.value = "";
             ui.slackChannelIDInput.value = "";
             ui.checkInputFields();
-            alert("Failed to verify slack configuration.");
+
+            console.error(`Invalid response: ${response.error}`);
+            return;
           }
+
+          ui.toggleConfigurationVisibility(true);
+          alert("Slack configuration is verified successfully.");
         }
       );
-    });
+    } catch (error) {
+      console.error(`Failed to verify slack configuration: ${error}`);
+      alert("Failed to verify slack configuration.");
+    }
+  });
 
-    ui.configureButton.addEventListener("click", () => {
-      ui.toggleConfigurationVisibility(false);
-    });
-
-    ui.watchToggleButton.addEventListener("click", async () => {
+  ui.watchToggleButton.addEventListener("click", async () => {
+    try {
       const isWatching = await storage.get("isWatching");
       const newWatcherState = !isWatching;
 
-      let response = await chrome.runtime.sendMessage({
-        event: "onWatcherStateChanged",
-        data: newWatcherState,
-      });
-
-      if (!response.ok) {
-        alert(`Error: ${response.error}`);
-        return;
-      }
-
-      const manifest = chrome.runtime.getManifest();
-      const contentScripts = manifest.content_scripts;
-      const matchPatterns = [];
-
-      contentScripts.forEach((contentScript) => {
-        contentScript.matches.forEach((match) => {
-          matchPatterns.push(match);
-        });
-      });
-
-      const tabs = await chrome.tabs.query({
-        url: matchPatterns,
-      });
-
-      console.info(`Queried tabs: ${tabs.length}`);
-      tabs.forEach((tab) => {
-        console.debug("Tab: " + tab.id);
-      });
-
-      if (tabs.length === 0) {
-        console.info("No matching tab found.");
-        alert(
-          `Cannot find any matching tabs.\nAt least one matching tab must exist in runtime:\n${matchPatterns}`
-        );
-
-        return;
-      }
-
-      // Only watch first tab.
-      const [tab] = tabs;
-
-      try {
-        response = await chrome.tabs.sendMessage(tab.id, {
+      chrome.runtime.sendMessage(
+        {
           event: "onWatcherStateChanged",
           data: newWatcherState,
-        });
-      } catch (error) {
-        throw new Error(`Error sending message to tab: ${error}`);
-      }
+        },
+        async (response) => {
+          if (chrome.runtime.lastError) {
+            console.debug(`Runtime error: ${chrome.runtime.lastError.message}`);
+            return;
+          }
 
-      if (response.ok) {
-        await storage.set("isWatching", newWatcherState);
-        ui.setWatcherButtonText(newWatcherState);
-        if (newWatcherState === true) {
-          ui.hide(ui.configureButton);
-          alert("Start watching mailbox!");
-        } else {
-          ui.show(ui.configureButton);
-          alert("Stop watching mailbox.");
+          if (!response.ok) {
+            console.error(`Invalid response: ${response.error}`);
+            return;
+          }
+
+          let manifest;
+
+          try {
+            manifest = chrome.runtime.getManifest();
+          } catch (error) {
+            console.error(error);
+          }
+
+          const contentScripts = manifest.content_scripts;
+          const matchPatterns = [];
+
+          contentScripts.forEach((contentScript) => {
+            contentScript.matches.forEach((match) => {
+              matchPatterns.push(match);
+            });
+          });
+
+          let tabs;
+
+          try {
+            tabs = await chrome.tabs.query({
+              url: matchPatterns,
+            });
+          } catch (error) {
+            console.error(error);
+            return;
+          }
+
+          console.info(`Queried tabs: ${tabs.length}`);
+          tabs.forEach((tab) => {
+            console.debug("Tab: " + tab.id);
+          });
+
+          if (tabs.length === 0) {
+            console.info("No matching tab found.");
+            alert(
+              `Cannot find any matching tabs.\nAt least one matching tab must exist in runtime:\n${matchPatterns}`
+            );
+
+            return;
+          }
+
+          // Only watch first tab.
+          const [tab] = tabs;
+
+          try {
+            chrome.tabs.sendMessage(
+              tab.id,
+              {
+                event: "onWatcherStateChanged",
+                data: newWatcherState,
+              },
+              async (response) => {
+                if (chrome.runtime.lastError) {
+                  console.debug(
+                    `Runtime error: ${chrome.runtime.lastError.message}`
+                  );
+                  return;
+                }
+
+                if (!response.ok) {
+                  console.error(`Invalid response: ${response.error}`);
+                  return;
+                }
+
+                try {
+                  await storage.set("isWatching", response.isWatching);
+                } catch (error) {
+                  console.error(error);
+                  return;
+                }
+
+                ui.setWatcherButtonText(response.isWatching);
+
+                if (response.isWatching === true) {
+                  ui.hide(ui.configureButton);
+                  alert("Start watching mailbox!");
+                } else {
+                  ui.show(ui.configureButton);
+                  alert("Stop watching mailbox.");
+                }
+              }
+            );
+          } catch (error) {
+            console.error(error);
+            return;
+          }
         }
-      } else {
-        throw new Error(response.error);
-      }
-    });
-  } catch (error) {
+      );
+    } catch (error) {
+      console.error(`Failed to handle button click event: ${error}`);
+    }
+  });
+}
+
+async function initPopup() {
+  await loadSlackSettings();
+  await initListeners();
+}
+
+window.onload = () => {
+  initPopup().catch((error) => {
     console.error(error);
     alert(`Error: ${error}`);
-  }
+  });
 };

@@ -10,11 +10,13 @@ if (chrome.runtime?.id) {
   chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     // Check current injection script has valid context.
     if (!chrome.runtime?.id) {
+      console.warn("Runtime context is invalid.");
       return;
     }
 
     if (!watcher) {
-      throw new Error("Watcher is not initalized yet.");
+      console.error("Watcher is not initalized yet.");
+      return;
     }
 
     if (message.event == "onWatcherStateChanged") {

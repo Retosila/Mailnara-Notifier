@@ -7,6 +7,7 @@ class NotifiedMailTracker {
 
   cache;
   pointer;
+  backup;
 
   constructor() {
     if (NotifiedMailTracker.instance) {
@@ -15,6 +16,7 @@ class NotifiedMailTracker {
 
     this.cache = new Array(NotifiedMailTracker.SIZE).fill(null);
     this.pointer = 0;
+    this.backup = null;
 
     NotifiedMailTracker.instance = this;
   }
@@ -86,8 +88,21 @@ class NotifiedMailTracker {
   }
 
   add(hash) {
-    this.cache[this.pointer] = hash;
+    this.backup = { hash: this.cache[this.pointer], pointer: this.pointer };
+
     this.pointer = (this.pointer + 1) % NotifiedMailTracker.SIZE;
+    this.cache[this.pointer] = hash;
+  }
+
+  rollback() {
+    if (this.backup) {
+      this.cache[this.backup.pointer] = this.backup.hash;
+      this.pointer = this.backup.pointer;
+
+      this.backup = null;
+
+      console.info("Rollback added hash.");
+    }
   }
 
   contains(hash) {
