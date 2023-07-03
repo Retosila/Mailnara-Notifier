@@ -209,6 +209,13 @@ async function initListeners() {
           if (tabs.length === 0) {
             console.info("No matching tab found.");
             if (isWatching) {
+              try {
+                await storage.set("isWatching", false);
+              } catch (error) {
+                console.error(error);
+                return;
+              }
+
               ui.setWatcherButtonText(response.isWatching);
               ui.show(ui.configureButton);
               alert("Stop watching mailbox.");
