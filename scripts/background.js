@@ -191,6 +191,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
       if (!message.data.slackChannelID) {
         console.error("Slack ChannelID is empty.");
+        return;
       }
 
       checkServiceVitality();
@@ -205,6 +206,9 @@ chrome.runtime.onInstalled.addListener((details) => {
 
           service.suspend();
           await service.prepare();
+
+          sendResponse({ ok: true });
+          console.info("Mail notification service is prepared.");
         } catch (error) {
           try {
             await Promise.all([
@@ -212,19 +216,19 @@ chrome.runtime.onInstalled.addListener((details) => {
               storage.remove("slackChannelID"),
               storage.remove("hasSavedSettings"),
             ]);
+
+            sendResponse({ ok: false, error: error.toString() });
+            console.info(
+              `Failed to save slack configuration: ${error.toString()}`
+            );
           } catch (error) {
-            throw new Error(`Failed to remove key from storage: ${error}`);
+            sendResponse({ ok: false, error: error.toString() });
+            console.info(
+              `Failed to clear slack configuration: ${error.toString()}`
+            );
           }
         }
-      })()
-        .then(() => {
-          sendResponse({ ok: true });
-          console.info("Mail notification service is prepared.");
-        })
-        .catch((error) => {
-          sendResponse({ ok: false, error: error });
-          console.info(`Failed to save slack configuration: ${error}`);
-        });
+      })();
     }
 
     return true;

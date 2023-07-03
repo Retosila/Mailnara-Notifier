@@ -119,7 +119,7 @@ class SlackNotifier extends Notifier {
         throw new Error(data.error);
       }
     } catch (error) {
-      return { ok: false, error: error };
+      return { ok: false, error: error.toString() };
     }
   }
 }

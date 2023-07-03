@@ -114,35 +114,40 @@ async function initListeners() {
 
   ui.saveButton.addEventListener("click", async () => {
     try {
-      chrome.runtime.sendMessage(
-        {
-          event: "onSaveButtonClicked",
-          data: {
-            slackAPIToken: ui.slackAPITokenInput.value.trim(),
-            slackChannelID: ui.slackChannelIDInput.value.trim(),
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          {
+            event: "onSaveButtonClicked",
+            data: {
+              slackAPIToken: ui.slackAPITokenInput.value.trim(),
+              slackChannelID: ui.slackChannelIDInput.value.trim(),
+            },
           },
-        },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            console.debug(`Runtime error: ${chrome.runtime.lastError.message}`);
-            return;
+          (response) => {
+            resolve(response);
           }
+        );
+      });
 
-          if (!response.ok) {
-            ui.slackAPITokenInput.value = "";
-            ui.slackChannelIDInput.value = "";
-            ui.checkInputFields();
+      console.log("response=");
+      console.log(response);
 
-            console.error(`Invalid response: ${response.error}`);
-            return;
-          }
+      if (chrome.runtime.lastError) {
+        throw new Error(chrome.runtime.lastError.message);
+      }
 
-          ui.toggleConfigurationVisibility(true);
-          alert("Slack configuration is verified successfully.");
-        }
-      );
+      if (!response.ok) {
+        ui.slackAPITokenInput.value = "";
+        ui.slackChannelIDInput.value = "";
+        ui.checkInputFields();
+
+        throw new Error(response.error);
+      }
+
+      ui.toggleConfigurationVisibility(true);
+      alert("Slack configuration is verified successfully.");
     } catch (error) {
-      console.error(`Failed to verify slack configuration: ${error}`);
+      console.debug(`Failed to verify slack configuration: ${error}`);
       alert("Failed to verify slack configuration.");
     }
   });
