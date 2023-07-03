@@ -198,5 +198,6 @@ window.onload = async () => {
     });
   } catch (error) {
     console.error(error);
+    alert(`Error: ${error}`);
   }
 };
