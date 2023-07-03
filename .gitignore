@@ -234,4 +234,7 @@ dist
 # SvelteKit build / generate output
 .svelte-kit
 
+# Ignore built tailwind css
+popups/style.css
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,visualstudiocode,git
