@@ -203,9 +203,15 @@ async function initListeners() {
 
           if (tabs.length === 0) {
             console.info("No matching tab found.");
-            alert(
-              `Cannot find any matching tabs.\nAt least one matching tab must exist in runtime:\n${matchPatterns}`
-            );
+            if (isWatching) {
+              ui.setWatcherButtonText(response.isWatching);
+              ui.show(ui.configureButton);
+              alert("Stop watching mailbox.");
+            } else {
+              alert(
+                `Cannot find any matching tabs.\nAt least one matching tab must exist in runtime:\n${matchPatterns}`
+              );
+            }
 
             return;
           }
