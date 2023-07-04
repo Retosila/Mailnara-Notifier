@@ -68,25 +68,23 @@ class MailWatcher {
   }
 
   startWatching() {
-    const self = this;
-
     this.observer = new MutationObserver(() => {
       // Check current injection script has valid context.
       if (!chrome.runtime?.id) {
         return;
       }
 
-      const isTargetUrl = self.checkCurrentUrlIsTarget(config);
+      const isTargetUrl = this.checkCurrentUrlIsTarget(config);
       if (!isTargetUrl) {
         return;
       }
 
-      const mailRows = self.getMailRows();
+      const mailRows = this.getMailRows();
       if (mailRows === null || mailRows.length === 0) {
         return;
       }
 
-      const newMails = mailRows.map(self.createMail);
+      const newMails = mailRows.map(this.createMail);
 
       console.info(`Unread mails: ${newMails.length}`);
 
