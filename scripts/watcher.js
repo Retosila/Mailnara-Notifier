@@ -82,9 +82,6 @@ class MailWatcher {
 
       const mailRows = this.getMailRows();
       if (mailRows === null || mailRows.length === 0) {
-        logger.error(
-          "failed to get any rows. please check query selector validity"
-        );
         return;
       }
 
