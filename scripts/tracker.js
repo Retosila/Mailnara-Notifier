@@ -22,20 +22,21 @@ class NotifiedMailTracker {
   }
 
   async prepare() {
-    this.loadNotifiedMailList();
+    await this.loadNotifiedMailList();
+    logger.info("tracker is prepared successfully");
   }
 
   async loadNotifiedMailList() {
     try {
       await this.load();
-      console.info("Loaded the notified mail list successfully.");
+      logger.info("loaded the notified mail list successfully");
 
       const cachedHashes = this.cache.filter((item) => item !== null);
-      console.info(`Cached Hashes: ${cachedHashes.length}`);
-      console.debug(cachedHashes);
+      logger.info(`cached hashes: ${cachedHashes.length}`);
+      logger.debug(cachedHashes);
     } catch (error) {
       throw new Error(
-        `"An error occurred while loading the notified mail list: ${error}`
+        `"an error occurred while loading the notified mail list: ${error}`
       );
     }
   }
@@ -43,10 +44,10 @@ class NotifiedMailTracker {
   async saveNotifiedMailList() {
     try {
       await this.save();
-      console.info("Saved the notified mail list successfully.");
+      logger.info("saved the notified mail list successfully");
     } catch (error) {
       throw new Error(
-        `"An error occurred while saving the notified mail list: ${error}`
+        `"an error occurred while saving the notified mail list: ${error}`
       );
     }
   }
@@ -100,8 +101,6 @@ class NotifiedMailTracker {
       this.pointer = this.backup.pointer;
 
       this.backup = null;
-
-      console.info("Rollback added hash.");
     }
   }
 

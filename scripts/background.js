@@ -1,7 +1,7 @@
 try {
-  importScripts("utils.js", "tracker.js", "notifier.js");
+  importScripts("logger.js", "utils.js", "tracker.js", "notifier.js");
 } catch (error) {
-  console.error(`Failed to import scripts: ${error}`);
+  console.error(`failed to import scripts: ${error}`);
 }
 
 class MailNotificationService {
@@ -9,7 +9,7 @@ class MailNotificationService {
 
   notifier;
   tracker;
-  messageListener;
+  newMailCallback;
   isPrepared;
 
   constructor(notifier, tracker) {
@@ -19,7 +19,7 @@ class MailNotificationService {
 
     this.notifier = notifier;
     this.tracker = tracker;
-    this.listener = null;
+    this.newMailCallback = null;
     this.isPrepared = false;
 
     MailNotificationService.instance = this;
@@ -27,22 +27,22 @@ class MailNotificationService {
 
   async prepare() {
     try {
+      logger.info("preparing service...");
       await Promise.all([this.notifier.prepare(), this.tracker.prepare()]);
       this.isPrepared = true;
+      logger.info("service is prepared succesfully");
     } catch (error) {
-      throw new Error(`Failed to prepare mail notification service: ${error}`);
+      throw new Error(`failed to prepare mail notification service: ${error}`);
     }
   }
 
   run() {
-    const self = this;
-
-    this.listener = (message, _, sendResponse) => {
+    this.newMailCallback = async (message, _, sendResponse) => {
       if (message.event === "onNewMailsReceived") {
         sendResponse({ ok: true });
 
-        if (!self.notifier || !self.tracker) {
-          console.error("Notifier or Tracker is not initialized");
+        if (!this.notifier || !this.tracker) {
+          logger.error("Notifier or Tracker is not initialized");
           return;
         }
 
@@ -51,6 +51,8 @@ class MailNotificationService {
         if (newMails === null || newMails.length === 0) {
           return;
         }
+
+        await this.tracker.loadNotifiedMailList();
 
         newMails.forEach((newMail) => {
           const stringifedMail =
@@ -61,52 +63,154 @@ class MailNotificationService {
             newMail.size;
 
           const hash = generateMD5Hash(stringifedMail);
-          console.debug(`Hash value for new mail: ${hash}`);
-
-          const isAlreadyNotified = self.tracker.contains(hash);
-          if (isAlreadyNotified) {
-            console.debug("Already notified.");
-            return;
-          }
-          self.tracker.add(hash);
 
           const formattedMail = formatMail(newMail);
-          if (formattedMail) {
-            (async () => {
-              try {
-                await self.notifier.notify(formattedMail);
-                console.info("Notified successfully.");
-                console.debug(`Notified mail:\n${formattedMail}`);
-              } catch (error) {
-                console.warn(`Failed to notify mail: ${error}`);
-                self.tracker.rollback();
-                return;
-              }
-
-              try {
-                self.tracker.saveNotifiedMailList();
-              } catch (error) {
-                console.error(`Failed to save notified mail list: ${error}`);
-              }
-            })();
+          if (!formattedMail) {
+            logger.error("failed to format mail");
+            return;
           }
+
+          const isAlreadyNotified = this.tracker.contains(hash);
+          if (isAlreadyNotified) {
+            logger.debug("already notified");
+            return;
+          }
+
+          this.tracker.add(hash);
+          logger.debug(`hashed mail is added to cache: ${hash}`);
+
+          (async () => {
+            try {
+              await this.notifier.notify(formattedMail);
+              logger.info("notified successfully");
+              logger.debug(`notified mail:\n${formattedMail}`);
+            } catch (error) {
+              logger.warn(`failed to notify mail: ${error}`);
+              this.tracker.rollback();
+              logger.info("rollback added hash");
+              return;
+            }
+
+            try {
+              await this.tracker.saveNotifiedMailList();
+            } catch (error) {
+              logger.error(`failed to save notified mail list: ${error}`);
+            }
+          })();
         });
       }
     };
 
-    chrome.runtime.onMessage.addListener(this.listener);
+    chrome.runtime.onMessage.addListener(this.newMailCallback);
   }
 
   suspend() {
-    if (this.listener) {
-      chrome.runtime.onMessage.removeListener(this.listener);
-      this.listener = null;
+    if (this.newMailCallback) {
+      chrome.runtime.onMessage.removeListener(this.newMailCallback);
+      this.newMailCallback = null;
     }
   }
 }
 
+logger.info("start to initialize service");
+
+const notifier = new SlackNotifier();
+const tracker = new NotifiedMailTracker();
+const service = new MailNotificationService(notifier, tracker);
+
+(async () => {
+  try {
+    const hasSavedSettings = (await storage.get("hasSavedSettings")) ?? false;
+    logger.debug(`hasSavedSettings: ${hasSavedSettings}`);
+
+    if (hasSavedSettings && !service.isPrepared) {
+      logger.info(
+        "slack api setting and service is intialized, but not prepared yet"
+      );
+
+      // Must call suspend() before preare() not to refer old listener.
+      service.suspend();
+      await service.prepare();
+      logger.info("mail notification service is prepared");
+      service.run();
+      logger.info("start mail notification service...");
+    }
+  } catch (error) {
+    logger.error(`failed to run service: ${error}`);
+    return;
+  }
+})();
+
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+  if (message.event === "onWatcherStateChanged") {
+    logger.debug(`onWatcherStateChanged. new state: ${message.data}`);
+
+    const isWatching = message.data;
+    if (isWatching) {
+      service.run();
+      logger.info("start mail notification service...");
+    } else {
+      service.suspend();
+      logger.info("suspend mail notification service...");
+    }
+    sendResponse({ ok: true });
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+  if (message.event === "onSaveButtonClicked") {
+    logger.debug("onSaveButtonClicked");
+
+    if (!message.data.slackAPIToken) {
+      logger.error("slack api token is empty");
+      return;
+    }
+
+    if (!message.data.slackChannelID) {
+      logger.error("slack channel id is empty");
+      return;
+    }
+
+    (async () => {
+      try {
+        await Promise.all([
+          storage.set("slackAPIToken", message.data.slackAPIToken),
+          storage.set("slackChannelID", message.data.slackChannelID),
+          storage.set("hasSavedSettings", true),
+        ]);
+
+        service.suspend();
+        await service.prepare();
+
+        sendResponse({ ok: true });
+        logger.info("mail notification service is prepared");
+      } catch (error) {
+        try {
+          await Promise.all([
+            storage.remove("slackAPIToken"),
+            storage.remove("slackChannelID"),
+            storage.remove("hasSavedSettings"),
+          ]);
+
+          sendResponse({ ok: false, error: error.toString() });
+          logger.info(
+            `failed to save slack configuration: ${error.toString()}`
+          );
+        } catch (error) {
+          sendResponse({ ok: false, error: error.toString() });
+          logger.info(
+            `failed to clear slack configuration: ${error.toString()}`
+          );
+        }
+      }
+    })();
+  }
+
+  return true;
+});
+
 chrome.runtime.onInstalled.addListener((details) => {
-  console.debug("Service worker is newly installed. Reason: " + details.reason);
+  logger.debug(`service worker is newly installed\nreason: ${details.reason}`);
 
   const manifest = chrome.runtime.getManifest();
   const contentScripts = manifest.content_scripts;
@@ -119,10 +223,10 @@ chrome.runtime.onInstalled.addListener((details) => {
           { target: { tabId: tab.id }, files: [script] },
           () => {
             if (chrome.runtime.lastError) {
-              console.debug(chrome.runtime.lastError.message);
+              logger.debug(chrome.runtime.lastError.message);
             } else {
-              console.debug(
-                `Script ${script} injected successfully into ${tab.url}.`
+              logger.debug(
+                `script ${script} injected successfully into ${tab.url}.`
               );
             }
           }
@@ -139,118 +243,4 @@ chrome.runtime.onInstalled.addListener((details) => {
       executeScriptsInTabs(matchPattern, scripts)
     );
   });
-
-  console.info("Start to initialize service.");
-
-  const notifier = new SlackNotifier();
-  const tracker = new NotifiedMailTracker();
-  const service = new MailNotificationService(notifier, tracker);
-
-  const checkServiceVitality = () => {
-    if (!service) {
-      console.error("Fatal error: service is missing.");
-      chrome.runtime.reload();
-      return;
-    }
-  };
-
-  checkServiceVitality();
-
-  (async () => {
-    try {
-      const hasSavedSettings = (await storage.get("hasSavedSettings")) ?? false;
-      console.debug(`hasSavedSettings: ${hasSavedSettings}`);
-      checkServiceVitality();
-
-      if (hasSavedSettings && !service.isPrepared) {
-        console.info(
-          "Slack API setting and service is intialized, but not prepared yet."
-        );
-
-        // Must call suspend() before preare() not to refer old listener.
-        service.suspend();
-        await service.prepare();
-        console.info("Mail notification service is prepared.");
-        service.run();
-        console.info("Start mail notification service...");
-      }
-    } catch (error) {
-      console.error(`Failed to run service: ${error}`);
-      return;
-    }
-  })();
-
-  const onSaveButtonClickedListener = (message, _, sendResponse) => {
-    if (message.event === "onSaveButtonClicked") {
-      console.debug("onSaveButtonClicked.");
-
-      if (!message.data.slackAPIToken) {
-        console.error("Slack API Token is empty.");
-        return;
-      }
-
-      if (!message.data.slackChannelID) {
-        console.error("Slack ChannelID is empty.");
-        return;
-      }
-
-      checkServiceVitality();
-
-      (async () => {
-        try {
-          await Promise.all([
-            storage.set("slackAPIToken", message.data.slackAPIToken),
-            storage.set("slackChannelID", message.data.slackChannelID),
-            storage.set("hasSavedSettings", true),
-          ]);
-
-          service.suspend();
-          await service.prepare();
-
-          sendResponse({ ok: true });
-          console.info("Mail notification service is prepared.");
-        } catch (error) {
-          try {
-            await Promise.all([
-              storage.remove("slackAPIToken"),
-              storage.remove("slackChannelID"),
-              storage.remove("hasSavedSettings"),
-            ]);
-
-            sendResponse({ ok: false, error: error.toString() });
-            console.info(
-              `Failed to save slack configuration: ${error.toString()}`
-            );
-          } catch (error) {
-            sendResponse({ ok: false, error: error.toString() });
-            console.info(
-              `Failed to clear slack configuration: ${error.toString()}`
-            );
-          }
-        }
-      })();
-    }
-
-    return true;
-  };
-
-  const onWatcherStateChangedListener = (message, _, sendResponse) => {
-    if (message.event === "onWatcherStateChanged") {
-      console.debug(`onWatcherStateChanged. New state: ${message.data}`);
-      checkServiceVitality();
-
-      const isWatching = message.data;
-      if (isWatching) {
-        service.run();
-        console.info("Start mail notification service...");
-      } else {
-        service.suspend();
-        console.info("Suspend mail notification service...");
-      }
-      sendResponse({ ok: true });
-    }
-  };
-
-  chrome.runtime.onMessage.addListener(onSaveButtonClickedListener);
-  chrome.runtime.onMessage.addListener(onWatcherStateChangedListener);
 });

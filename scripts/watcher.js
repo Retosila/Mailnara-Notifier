@@ -46,6 +46,7 @@ class MailWatcher {
   observer;
   config;
   isWatching;
+  cache;
 
   constructor(config) {
     if (MailWatcher.instance) {
@@ -55,6 +56,7 @@ class MailWatcher {
     this.isWatching = false;
     this.config = config;
     this.observer = null;
+    this.cache = null;
 
     MailWatcher.instance = this;
   }
@@ -63,13 +65,12 @@ class MailWatcher {
     try {
       this.isWatching = (await storage.get("isWatching")) ?? false;
     } catch (error) {
-      throw new Error(`Failed to load watcher state: ${error}`);
+      throw new Error(`failed to load watcher state: ${error}`);
     }
   }
 
   startWatching() {
     this.observer = new MutationObserver(() => {
-      // Check current injection script has valid context.
       if (!chrome.runtime?.id) {
         return;
       }
@@ -81,15 +82,25 @@ class MailWatcher {
 
       const mailRows = this.getMailRows();
       if (mailRows === null || mailRows.length === 0) {
+        logger.error(
+          "failed to get any rows. please check query selector validity"
+        );
         return;
       }
 
-      const newMails = mailRows.map(this.createMail);
+      // Check any new mail has been received.
+      if (JSON.stringify(this.cache) === JSON.stringify(mailRows)) {
+        logger.debug("no change is detected");
+        return;
+      }
 
-      console.info(`Unread mails: ${newMails.length}`);
+      this.cache = mailRows;
+
+      const newMails = mailRows.map(this.createMail);
+      logger.info(`new mails: ${newMails.length}`);
 
       newMails.forEach((newMail) => {
-        console.debug(newMail.title);
+        logger.debug(newMail.title);
       });
 
       try {
@@ -100,22 +111,22 @@ class MailWatcher {
           },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.debug(
-                `Runtime error: ${chrome.runtime.lastError.message}`
+              logger.debug(
+                `runtime error: ${chrome.runtime.lastError.message}`
               );
               return;
             }
 
             if (!response.ok) {
-              console.error(`Invalid response: ${response.error}`);
+              logger.error(`invalid response: ${response.error}`);
               return;
             }
 
-            console.debug("Success to pass new mails to notifier.");
+            logger.debug("success to pass new mails to notifier");
           }
         );
       } catch (error) {
-        console.debug(`Failed to pass new mails to notifier: ${error}`);
+        logger.debug(`failed to pass new mails to notifier: ${error}`);
       }
     });
 
@@ -156,10 +167,9 @@ class MailWatcher {
       "table.mail_table > tbody > tr"
     );
     if (mailRows.length === 0) {
-      console.error("No rows found.");
       return null;
     } else {
-      console.debug(`${mailRows.length} rows found.`);
+      logger.debug(`${mailRows.length} rows found`);
     }
 
     mailRows = Array.from(mailRows).filter((row) => {

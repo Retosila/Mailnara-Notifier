@@ -40,17 +40,19 @@ class SlackNotifier extends Notifier {
       );
 
       if (result.ok) {
-        console.debug("Slack configuration is validated");
+        logger.debug("slack configuration is validated");
 
         this.token = slackAPIToken;
         this.channelID = slackChannelID;
+
+        logger.info("notifier is prepared successfully");
       } else {
         throw new Error(
-          `Failed to validate slack configuration: ${result.error}`
+          `failed to validate slack configuration: ${result.error}`
         );
       }
     } catch (error) {
-      throw new Error(`Failed to fetch slack configuration: ${error}`);
+      throw new Error(`failed to fetch slack configuration: ${error}`);
     }
   }
 
@@ -75,18 +77,18 @@ class SlackNotifier extends Notifier {
       const data = await response.json();
 
       if (data.ok) {
-        console.debug(`Success to notify: ${data.ts}`);
+        logger.debug(`success to notify: ${data.ts}`);
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
-      throw new Error(`Failed to notify: ${error}`);
+      throw new Error(`failed to notify: ${error}`);
     }
   }
 
   async hasValidConfiguration(slackAPIToken, slackChannelID, slackAPIEndpoint) {
-    console.debug(
-      `Check slack configuration validty:\nAPI Token:${slackAPIToken}\nChannel ID:${slackChannelID}\nEndpoint:${slackAPIEndpoint}`
+    logger.debug(
+      `check slack configuration validty\napi token:${slackAPIToken}\nchannel id:${slackChannelID}\nendpoint:${slackAPIEndpoint}`
     );
 
     if (!slackAPIToken || !slackChannelID || !slackAPIEndpoint) {
@@ -101,7 +103,7 @@ class SlackNotifier extends Notifier {
 
     const body = JSON.stringify({
       channel: slackChannelID,
-      text: "Check slack configuration validity.",
+      text: "check slack configuration validity",
     });
 
     try {

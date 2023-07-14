@@ -22,7 +22,7 @@
   "content_scripts": [
     {
       "matches": ["https://mail.sds.co.kr/*"],
-      "js": ["scripts/watcher.js", "scripts/inject.js"],
+      "js": ["scripts/logger.js", "scripts/watcher.js", "scripts/inject.js"],
       "run_at": "document_end"
     }
   ],

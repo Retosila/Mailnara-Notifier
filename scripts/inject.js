@@ -6,41 +6,35 @@ const watchFirstPageOnly = true;
 const config = new Config(targetBaseURL, targetMailboxes, watchFirstPageOnly);
 const watcher = new MailWatcher(config);
 
-if (chrome.runtime?.id) {
-  chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
-    // Check current injection script has valid context.
-    if (!chrome.runtime?.id) {
-      console.warn("Runtime context is invalid.");
-      return;
-    }
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+  if (!chrome.runtime?.id) {
+    return;
+  }
 
-    if (!watcher) {
-      console.error("Watcher is not initalized yet.");
-      return;
-    }
+  if (!watcher) {
+    logger.error("watcher is not initalized yet.");
+    return;
+  }
 
-    if (message.event == "onWatcherStateChanged") {
-      let isWatching = message.data;
+  if (message.event == "onWatcherStateChanged") {
+    let isWatching = message.data;
 
-      if (isWatching) {
-        watcher.startWatching();
-        console.info("Start watching...");
-        sendResponse({ ok: true, isWatching: true });
-      } else {
-        watcher.stopWatching();
-        console.info("Stop watching...");
-        sendResponse({ ok: true, isWatching: false });
-      }
+    if (isWatching) {
+      watcher.startWatching();
+      logger.info("start watching...");
+      sendResponse({ ok: true, isWatching: true });
+    } else {
+      watcher.stopWatching();
+      logger.info("stop watching...");
+      sendResponse({ ok: true, isWatching: false });
     }
-  });
-} else {
-  console.warn("Runtime context is invalid.");
-}
+  }
+});
 
 (async () => {
   try {
     if (!watcher) {
-      throw new Error("Watcher is not initalized yet.");
+      throw new Error("watcher is not initalized yet");
     }
 
     const isWatching = (await storage.get("isWatching")) ?? false;
@@ -48,15 +42,15 @@ if (chrome.runtime?.id) {
     if (isWatching) {
       if (isWatching) {
         watcher.startWatching();
-        console.info("Start watching...");
+        logger.info("start watching...");
       } else {
         watcher.stopWatching();
-        console.info("Stop watching...");
+        logger.info("stop watching...");
       }
     }
   } catch (error) {
-    console.error(`Failed to get watch state: ${error}`);
+    logger.error(`failed to get watch state: ${error}`);
   }
 })();
 
-console.debug("Content script is injected.");
+logger.debug("content script is injected");

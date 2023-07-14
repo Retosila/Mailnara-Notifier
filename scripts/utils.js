@@ -1,7 +1,7 @@
 try {
   importScripts("lib/hash.js");
 } catch (error) {
-  console.error(`Failed to import script: ${error}`);
+  console.error(`failed to import script: ${error}`);
 }
 
 function formatMail(mail) {

@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("version").textContent = `v${version}`;
   } catch (error) {
-    console.error("Error while getting manifest data: ", error);
+    logger.error("error while getting manifest data: ", error);
   }
 });
 
@@ -100,7 +100,7 @@ async function loadSlackSettings() {
       ui.hide(ui.configureButton);
     }
   } catch (error) {
-    throw new Error(`Error while loading Slack settings: ${error}`);
+    throw new Error(`error while loading slack settings: ${error}`);
   }
 }
 
@@ -129,9 +129,6 @@ async function initListeners() {
         );
       });
 
-      console.log("response=");
-      console.log(response);
-
       if (chrome.runtime.lastError) {
         throw new Error(chrome.runtime.lastError.message);
       }
@@ -147,7 +144,7 @@ async function initListeners() {
       ui.toggleConfigurationVisibility(true);
       alert("Slack configuration is verified successfully.");
     } catch (error) {
-      console.debug(`Failed to verify slack configuration: ${error}`);
+      logger.debug(`failed to verify slack configuration: ${error}`);
       alert("Failed to verify slack configuration.");
     }
   });
@@ -164,12 +161,12 @@ async function initListeners() {
         },
         async (response) => {
           if (chrome.runtime.lastError) {
-            console.debug(`Runtime error: ${chrome.runtime.lastError.message}`);
+            logger.debug(`runtime error: ${chrome.runtime.lastError.message}`);
             return;
           }
 
           if (!response.ok) {
-            console.error(`Invalid response: ${response.error}`);
+            logger.error(`invalid response: ${response.error}`);
             return;
           }
 
@@ -178,7 +175,7 @@ async function initListeners() {
           try {
             manifest = chrome.runtime.getManifest();
           } catch (error) {
-            console.error(error);
+            logger.error(error);
           }
 
           const contentScripts = manifest.content_scripts;
@@ -197,22 +194,22 @@ async function initListeners() {
               url: matchPatterns,
             });
           } catch (error) {
-            console.error(error);
+            logger.error(error);
             return;
           }
 
-          console.info(`Queried tabs: ${tabs.length}`);
+          logger.info(`queried tabs: ${tabs.length}`);
           tabs.forEach((tab) => {
-            console.debug("Tab: " + tab.id);
+            logger.debug("tab: " + tab.id);
           });
 
           if (tabs.length === 0) {
-            console.info("No matching tab found.");
+            logger.info("no matching tab found");
             if (isWatching) {
               try {
                 await storage.set("isWatching", false);
               } catch (error) {
-                console.error(error);
+                logger.error(error);
                 return;
               }
 
@@ -240,21 +237,21 @@ async function initListeners() {
               },
               async (response) => {
                 if (chrome.runtime.lastError) {
-                  console.debug(
-                    `Runtime error: ${chrome.runtime.lastError.message}`
+                  logger.debug(
+                    `runtime error: ${chrome.runtime.lastError.message}`
                   );
                   return;
                 }
 
                 if (!response.ok) {
-                  console.error(`Invalid response: ${response.error}`);
+                  logger.error(`invalid response: ${response.error}`);
                   return;
                 }
 
                 try {
                   await storage.set("isWatching", response.isWatching);
                 } catch (error) {
-                  console.error(error);
+                  logger.error(error);
                   return;
                 }
 
@@ -270,13 +267,13 @@ async function initListeners() {
               }
             );
           } catch (error) {
-            console.error(error);
+            logger.error(error);
             return;
           }
         }
       );
     } catch (error) {
-      console.error(`Failed to handle button click event: ${error}`);
+      logger.error(`failed to handle button click event: ${error}`);
     }
   });
 }
@@ -288,7 +285,7 @@ async function initPopup() {
 
 window.onload = () => {
   initPopup().catch((error) => {
-    console.error(error);
-    alert(`Error: ${error}`);
+    logger.error(error);
+    alert(`error: ${error}`);
   });
 };
