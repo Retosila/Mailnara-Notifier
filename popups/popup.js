@@ -72,9 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const version = manifestData.version;
 
     document.getElementById("version").textContent = `v${version}`;
-  } catch (error) {
-    console.error("error while getting manifest data: ", error);
-  }
+  } catch (error) {}
 });
 
 async function loadSlackSettings() {
@@ -140,7 +138,6 @@ async function initListeners() {
       ui.toggleConfigurationVisibility(true);
       alert("Slack configuration is verified successfully.");
     } catch (error) {
-      console.debug(`failed to verify slack configuration: ${error}`);
       alert("Failed to verify slack configuration.");
     }
   });
@@ -157,7 +154,6 @@ async function initListeners() {
         },
         async (response) => {
           if (!response.ok) {
-            console.error(`invalid response: ${response.error}`);
             return;
           }
 
@@ -166,7 +162,6 @@ async function initListeners() {
           try {
             manifest = chrome.runtime.getManifest();
           } catch (error) {
-            console.error(error);
             return;
           }
 
@@ -186,22 +181,14 @@ async function initListeners() {
               url: matchPatterns,
             });
           } catch (error) {
-            console.error(error);
             return;
           }
 
-          console.info(`queried tabs: ${tabs.length}`);
-          tabs.forEach((tab) => {
-            console.debug("tab: " + tab.id);
-          });
-
           if (tabs.length === 0) {
-            console.info("no matching tab found");
             if (isWatching) {
               try {
                 await storage.set("isWatching", false);
               } catch (error) {
-                console.error(error);
                 return;
               }
 
@@ -229,21 +216,16 @@ async function initListeners() {
               },
               async (response) => {
                 if (chrome.runtime.lastError) {
-                  console.debug(
-                    `runtime error: ${chrome.runtime.lastError.message}`
-                  );
                   return;
                 }
 
                 if (!response.ok) {
-                  console.error(`invalid response: ${response.error}`);
                   return;
                 }
 
                 try {
                   await storage.set("isWatching", response.isWatching);
                 } catch (error) {
-                  console.error(error);
                   return;
                 }
 
@@ -259,14 +241,11 @@ async function initListeners() {
               }
             );
           } catch (error) {
-            console.error(error);
             return;
           }
         }
       );
-    } catch (error) {
-      console.error(`failed to handle button click event: ${error}`);
-    }
+    } catch (error) {}
   });
 }
 
@@ -277,7 +256,6 @@ async function initPopup() {
 
 window.onload = () => {
   initPopup().catch((error) => {
-    console.error(error);
     alert(`error: ${error}`);
   });
 };

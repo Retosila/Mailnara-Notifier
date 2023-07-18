@@ -13,7 +13,6 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   }
 
   if (!watcher) {
-    console.error("watcher is not initalized yet.");
     sendResponse({ ok: false });
     return;
   }
@@ -23,11 +22,11 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
     if (isWatching) {
       watcher.startWatching();
-      console.info("start watching...");
+
       sendResponse({ ok: true, isWatching: true });
     } else {
       watcher.stopWatching();
-      console.info("stop watching...");
+
       sendResponse({ ok: true, isWatching: false });
     }
   }
@@ -43,14 +42,8 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
     if (watcher.isWatching) {
       watcher.startWatching();
-      console.info("start watching...");
     } else {
       watcher.stopWatching();
-      console.info("stop watching...");
     }
-  } catch (error) {
-    console.error(`failed to get watch state: ${error}`);
-  }
+  } catch (error) {}
 })();
-
-console.debug("content script is injected");

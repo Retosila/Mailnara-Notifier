@@ -21,11 +21,9 @@ class MailNotificationService {
 
   async prepare() {
     try {
-      console.info("preparing service...");
       await Promise.all([this.notifier.prepare(), this.tracker.prepare()]);
 
       this.isPrepared = true;
-      console.info("service is prepared succesfully");
     } catch (error) {
       throw new Error(`failed to prepare mail notification service: ${error}`);
     }
@@ -37,7 +35,6 @@ class MailNotificationService {
         sendResponse({ ok: true });
 
         if (!this.notifier || !this.tracker) {
-          console.error("Notifier or Tracker is not initialized");
           return;
         }
 
@@ -61,37 +58,28 @@ class MailNotificationService {
 
           const formattedMail = formatMail(newMail);
           if (!formattedMail) {
-            console.error("failed to format mail");
             return;
           }
 
           const isAlreadyNotified = this.tracker.contains(hash);
           if (isAlreadyNotified) {
-            console.debug("already notified");
             return;
           }
 
           this.tracker.add(hash);
-          console.debug(`hashed mail is added to cache: ${hash}`);
 
           (async () => {
             try {
               await this.notifier.notify(formattedMail);
-              console.info("notified successfully");
-              console.debug(`notified mail:\n${formattedMail}`);
             } catch (error) {
               const msg = `failed to notify mail: ${error}`;
-              console.warn(msg);
               this.tracker.rollback();
-              console.info("rollback added hash");
               return;
             }
 
             try {
               await this.tracker.saveNotifiedMailList();
-            } catch (error) {
-              console.error(`failed to save notified mail list: ${error}`);
-            }
+            } catch (error) {}
           })();
         });
       }
@@ -144,7 +132,6 @@ function keepAlive() {
     if (port.name === "heartbeat") {
       setTimeout(() => {
         port.disconnect();
-        console.debug("heartbeat");
       }, 25000);
     }
   });
@@ -161,7 +148,6 @@ function keepAlive() {
 }
 
 keepAlive();
-console.info("make service worker keep alive");
 
 let notifier;
 let tracker;
@@ -170,19 +156,15 @@ let service;
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.event === "isServiceRunning") {
     if (!service) {
-      console.debug("service is not initialized");
       sendResponse({ ok: false, data: null });
       return;
     }
 
-    console.debug(`isServiceRunning: ${service.isRunning}`);
     sendResponse({ ok: true, data: service.isRunning });
   }
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
-  console.debug(`service worker is newly installed\nreason: ${details.reason}`);
-
   const manifest = chrome.runtime.getManifest();
   const contentScripts = manifest.content_scripts;
 
@@ -190,18 +172,10 @@ chrome.runtime.onInstalled.addListener((details) => {
     const tabs = await chrome.tabs.query({ url: matchPattern });
     tabs.forEach((tab) => {
       scripts.forEach((script) => {
-        chrome.scripting.executeScript(
-          { target: { tabId: tab.id }, files: [script] },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.debug(chrome.runtime.lastError.message);
-            } else {
-              console.debug(
-                `script ${script} injected successfully into ${tab.url}.`
-              );
-            }
-          }
-        );
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [script],
+        });
       });
     });
   };
@@ -218,27 +192,21 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.event === "onWatcherStateChanged") {
-    console.debug(`onWatcherStateChanged. new state: ${message.data}`);
-
     const isWatching = message.data;
 
     if (!service || !service.isPrepared) {
-      console.debug("service is null or service is not prepared");
       sendResponse({ ok: false });
       return;
     }
 
     if (isWatching) {
       if (service.isRunning) {
-        console.info("service is already running");
         sendResponse({ ok: true });
         return;
       }
       service.run();
-      console.info("run mail notification service...");
     } else {
       service.suspend();
-      console.info("suspend mail notification service...");
     }
     sendResponse({ ok: true });
   }
@@ -246,16 +214,12 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.event === "onSaveButtonClicked") {
-    console.debug("onSaveButtonClicked");
-
     if (!message.data.slackAPIToken) {
-      console.error("slack api token is empty");
       sendResponse({ ok: false, error: "slack api token is empty" });
       return;
     }
 
     if (!message.data.slackChannelID) {
-      console.error("slack channel id is empty");
       sendResponse({ ok: false, error: "slack channel id is empty" });
       return;
     }
@@ -271,17 +235,11 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
         notifier = new SlackNotifier();
         tracker = new NotifiedMailTracker();
         service = new MailNotificationService(notifier, tracker);
-        console.info("service is initialized");
 
         if (!service.isPrepared) {
-          console.info(
-            "slack api setting and service is intialized, but not prepared yet"
-          );
-
           // Must call suspend() before preare() not to refer old listener.
           service.suspend();
           await service.prepare();
-          console.info("mail notification service is prepared");
         }
 
         sendResponse({ ok: true });
@@ -294,14 +252,8 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
           ]);
 
           sendResponse({ ok: false, error: error.toString() });
-          console.info(
-            `failed to save slack configuration: ${error.toString()}`
-          );
         } catch (error) {
           sendResponse({ ok: false, error: error.toString() });
-          console.info(
-            `failed to clear slack configuration: ${error.toString()}`
-          );
         }
       }
     })();
@@ -314,35 +266,23 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   try {
     const hasSavedSettings = (await storage.get("hasSavedSettings")) ?? false;
     const isWatching = (await storage.get("isWatching")) ?? false;
-    console.debug(`hasSavedSettings: ${hasSavedSettings}`);
-    console.debug(`isWatching: ${isWatching}`);
 
     if (!hasSavedSettings) {
-      console.info("slack api setting is not set yet");
       return;
     }
 
     notifier = new SlackNotifier();
     tracker = new NotifiedMailTracker();
     service = new MailNotificationService(notifier, tracker);
-    console.info("service is initialized");
 
     if (!service.isPrepared) {
-      console.info(
-        "slack api setting and service is intialized, but not prepared yet"
-      );
-
       // Must call suspend() before preare() not to refer old listener.
       service.suspend();
       await service.prepare();
-      console.info("mail notification service is prepared");
     }
 
     if (isWatching && !service.isRunning) {
       service.run();
-      console.info("run mail notification service...");
     }
-  } catch (error) {
-    console.error(`failed to run service: ${error}`);
-  }
+  } catch (error) {}
 })();

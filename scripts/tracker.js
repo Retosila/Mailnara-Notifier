@@ -15,17 +15,11 @@ class NotifiedMailTracker {
 
   async prepare() {
     await this.loadNotifiedMailList();
-    console.info("tracker is prepared successfully");
   }
 
   async loadNotifiedMailList() {
     try {
       await this.load();
-      console.info("loaded the notified mail list successfully");
-
-      const cachedHashes = this.cache.filter((item) => item !== null);
-      console.info(`cached hashes: ${cachedHashes.length}`);
-      console.debug(cachedHashes);
     } catch (error) {
       throw new Error(
         `"an error occurred while loading the notified mail list: ${error}`
@@ -36,7 +30,6 @@ class NotifiedMailTracker {
   async saveNotifiedMailList() {
     try {
       await this.save();
-      console.info("saved the notified mail list successfully");
     } catch (error) {
       throw new Error(
         `"an error occurred while saving the notified mail list: ${error}`

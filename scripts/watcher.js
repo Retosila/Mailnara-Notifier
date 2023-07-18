@@ -83,23 +83,16 @@ class MailWatcher {
 
       // Check any new mail has been received.
       if (JSON.stringify(this.cache) === JSON.stringify(mailRows)) {
-        console.debug("no change is detected");
         return;
       }
 
       if (!(await this.isServiceRunning())) {
-        console.info("service is not running");
         return;
       }
 
       this.cache = mailRows;
 
       const newMails = mailRows.map(this.createMail);
-      console.info(`new mails: ${newMails.length}`);
-
-      newMails.forEach((newMail) => {
-        console.debug(newMail.title);
-      });
 
       try {
         chrome.runtime.sendMessage(
@@ -109,17 +102,12 @@ class MailWatcher {
           },
           (response) => {
             if (!response.ok) {
-              console.error(`invalid response: ${response.error}`);
               this.cache = null;
               return;
             }
-
-            console.debug("success to pass new mails to notifier");
           }
         );
-      } catch (error) {
-        console.debug(`failed to pass new mails to notifier: ${error}`);
-      }
+      } catch (error) {}
     });
 
     this.observer.observe(document.body, { childList: true, subtree: true });

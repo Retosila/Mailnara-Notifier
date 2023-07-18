@@ -22,7 +22,6 @@ class SlackNotifier extends Notifier {
 
   async prepare() {
     if (this.isPrepared) {
-      console.debug("slack notifier is already prepared");
       return;
     }
 
@@ -40,8 +39,6 @@ class SlackNotifier extends Notifier {
 
       this.token = slackAPIToken;
       this.channelID = slackChannelID;
-
-      console.info("notifier is prepared successfully");
     } catch (error) {
       throw new Error(`failed to fetch slack configuration: ${error}`);
     }
