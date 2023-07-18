@@ -91,15 +91,11 @@ class SlackNotifier extends Notifier {
           title: "Mailnara Notifier",
           message: `Failed to notify\nError: ${msg}`,
         });
-      }
-
-      if (data.ok) {
-        console.debug(`success to notify: ${data.ts}`);
-      } else {
-        i;
 
         throw new Error(`failed to send slack message: ${data.error}`);
       }
+
+      console.debug(`success to notify: ${data.ts}`);
     } catch (error) {
       throw new Error(`failed to notify: ${error}`);
     }

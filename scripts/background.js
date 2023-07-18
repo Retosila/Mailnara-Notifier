@@ -145,7 +145,7 @@ function keepAlive() {
       setTimeout(() => {
         port.disconnect();
         console.debug("heartbeat");
-      }, 3000);
+      }, 25000);
     }
   });
 
