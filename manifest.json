@@ -22,7 +22,7 @@
   "content_scripts": [
     {
       "matches": ["https://mail.sds.co.kr/*"],
-      "js": ["scripts/logger.js", "scripts/watcher.js", "scripts/inject.js"],
+      "js": ["scripts/watcher.js", "scripts/inject.js"],
       "run_at": "document_end"
     }
   ],
@@ -30,5 +30,5 @@
     "service_worker": "scripts/background.js"
   },
   "permissions": ["storage", "tabs", "scripting"],
-  "host_permissions": ["https://slack.com/api/*", "https://mail.sds.co.kr/*"]
+  "host_permissions": ["<all_urls>"]
 }

@@ -9,24 +9,23 @@ class Notifier {
 }
 
 class SlackNotifier extends Notifier {
-  static instance;
-
   token;
   channelID;
   endpoint;
+  isPrepared;
 
   constructor() {
-    if (SlackNotifier.instance) {
-      return SlackNotifier.instance;
-    }
-
     super();
     this.endpoint = "https://slack.com/api/chat.postMessage";
-
-    SlackNotifier.instance = this;
+    this.isPrepared = false;
   }
 
   async prepare() {
+    if (this.isPrepared) {
+      console.debug("slack notifier is already prepared");
+      return;
+    }
+
     try {
       const [slackAPIToken, slackChannelID] = await Promise.all([
         (async () => (await storage.get("slackAPIToken")) ?? "")(),
@@ -40,12 +39,13 @@ class SlackNotifier extends Notifier {
       );
 
       if (result.ok) {
-        logger.debug("slack configuration is validated");
+        console.debug("slack configuration is validated");
 
         this.token = slackAPIToken;
         this.channelID = slackChannelID;
+        this.isPrepared = true;
 
-        logger.info("notifier is prepared successfully");
+        console.info("notifier is prepared successfully");
       } else {
         throw new Error(
           `failed to validate slack configuration: ${result.error}`
@@ -77,7 +77,7 @@ class SlackNotifier extends Notifier {
       const data = await response.json();
 
       if (data.ok) {
-        logger.debug(`success to notify: ${data.ts}`);
+        console.debug(`success to notify: ${data.ts}`);
       } else {
         throw new Error(data.error);
       }
@@ -87,7 +87,7 @@ class SlackNotifier extends Notifier {
   }
 
   async hasValidConfiguration(slackAPIToken, slackChannelID, slackAPIEndpoint) {
-    logger.debug(
+    console.debug(
       `check slack configuration validty\napi token:${slackAPIToken}\nchannel id:${slackChannelID}\nendpoint:${slackAPIEndpoint}`
     );
 

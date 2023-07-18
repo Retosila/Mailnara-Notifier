@@ -70,11 +70,7 @@ class MailWatcher {
   }
 
   startWatching() {
-    this.observer = new MutationObserver(() => {
-      if (!chrome.runtime?.id) {
-        return;
-      }
-
+    this.observer = new MutationObserver(async () => {
       const isTargetUrl = this.checkCurrentUrlIsTarget(config);
       if (!isTargetUrl) {
         return;
@@ -87,17 +83,22 @@ class MailWatcher {
 
       // Check any new mail has been received.
       if (JSON.stringify(this.cache) === JSON.stringify(mailRows)) {
-        logger.debug("no change is detected");
+        console.debug("no change is detected");
+        return;
+      }
+
+      if (!(await this.isServiceRunning())) {
+        console.info("service is not running");
         return;
       }
 
       this.cache = mailRows;
 
       const newMails = mailRows.map(this.createMail);
-      logger.info(`new mails: ${newMails.length}`);
+      console.info(`new mails: ${newMails.length}`);
 
       newMails.forEach((newMail) => {
-        logger.debug(newMail.title);
+        console.debug(newMail.title);
       });
 
       try {
@@ -107,23 +108,17 @@ class MailWatcher {
             data: newMails,
           },
           (response) => {
-            if (chrome.runtime.lastError) {
-              logger.debug(
-                `runtime error: ${chrome.runtime.lastError.message}`
-              );
-              return;
-            }
-
             if (!response.ok) {
-              logger.error(`invalid response: ${response.error}`);
+              console.error(`invalid response: ${response.error}`);
+              this.cache = null;
               return;
             }
 
-            logger.debug("success to pass new mails to notifier");
+            console.debug("success to pass new mails to notifier");
           }
         );
       } catch (error) {
-        logger.debug(`failed to pass new mails to notifier: ${error}`);
+        console.debug(`failed to pass new mails to notifier: ${error}`);
       }
     });
 
@@ -136,6 +131,32 @@ class MailWatcher {
       this.observer.disconnect();
       this.observer = null;
       this.isWatching = false;
+    }
+  }
+
+  async isServiceRunning() {
+    let isServiceRunning;
+    try {
+      isServiceRunning = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { event: "isServiceRunning" },
+          (response) => {
+            if (!chrome.runtime?.id) {
+              reject("invalid runtime id");
+            } else if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else if (!response.ok) {
+              reject(`invalid response: ${response.error}`);
+            } else {
+              resolve(response.data);
+            }
+          }
+        );
+      });
+    } catch (error) {
+      isServiceRunning = false;
+    } finally {
+      return isServiceRunning;
     }
   }
 
@@ -163,10 +184,9 @@ class MailWatcher {
     let mailRows = mailListBox.querySelectorAll(
       "table.mail_table > tbody > tr"
     );
+
     if (mailRows.length === 0) {
       return null;
-    } else {
-      logger.debug(`${mailRows.length} rows found`);
     }
 
     mailRows = Array.from(mailRows).filter((row) => {

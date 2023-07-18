@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("version").textContent = `v${version}`;
   } catch (error) {
-    logger.error("error while getting manifest data: ", error);
+    console.error("error while getting manifest data: ", error);
   }
 });
 
@@ -129,10 +129,6 @@ async function initListeners() {
         );
       });
 
-      if (chrome.runtime.lastError) {
-        throw new Error(chrome.runtime.lastError.message);
-      }
-
       if (!response.ok) {
         ui.slackAPITokenInput.value = "";
         ui.slackChannelIDInput.value = "";
@@ -144,7 +140,7 @@ async function initListeners() {
       ui.toggleConfigurationVisibility(true);
       alert("Slack configuration is verified successfully.");
     } catch (error) {
-      logger.debug(`failed to verify slack configuration: ${error}`);
+      console.debug(`failed to verify slack configuration: ${error}`);
       alert("Failed to verify slack configuration.");
     }
   });
@@ -160,13 +156,8 @@ async function initListeners() {
           data: newWatcherState,
         },
         async (response) => {
-          if (chrome.runtime.lastError) {
-            logger.debug(`runtime error: ${chrome.runtime.lastError.message}`);
-            return;
-          }
-
           if (!response.ok) {
-            logger.error(`invalid response: ${response.error}`);
+            console.error(`invalid response: ${response.error}`);
             return;
           }
 
@@ -175,7 +166,8 @@ async function initListeners() {
           try {
             manifest = chrome.runtime.getManifest();
           } catch (error) {
-            logger.error(error);
+            console.error(error);
+            return;
           }
 
           const contentScripts = manifest.content_scripts;
@@ -194,22 +186,22 @@ async function initListeners() {
               url: matchPatterns,
             });
           } catch (error) {
-            logger.error(error);
+            console.error(error);
             return;
           }
 
-          logger.info(`queried tabs: ${tabs.length}`);
+          console.info(`queried tabs: ${tabs.length}`);
           tabs.forEach((tab) => {
-            logger.debug("tab: " + tab.id);
+            console.debug("tab: " + tab.id);
           });
 
           if (tabs.length === 0) {
-            logger.info("no matching tab found");
+            console.info("no matching tab found");
             if (isWatching) {
               try {
                 await storage.set("isWatching", false);
               } catch (error) {
-                logger.error(error);
+                console.error(error);
                 return;
               }
 
@@ -237,21 +229,21 @@ async function initListeners() {
               },
               async (response) => {
                 if (chrome.runtime.lastError) {
-                  logger.debug(
+                  console.debug(
                     `runtime error: ${chrome.runtime.lastError.message}`
                   );
                   return;
                 }
 
                 if (!response.ok) {
-                  logger.error(`invalid response: ${response.error}`);
+                  console.error(`invalid response: ${response.error}`);
                   return;
                 }
 
                 try {
                   await storage.set("isWatching", response.isWatching);
                 } catch (error) {
-                  logger.error(error);
+                  console.error(error);
                   return;
                 }
 
@@ -267,13 +259,13 @@ async function initListeners() {
               }
             );
           } catch (error) {
-            logger.error(error);
+            console.error(error);
             return;
           }
         }
       );
     } catch (error) {
-      logger.error(`failed to handle button click event: ${error}`);
+      console.error(`failed to handle button click event: ${error}`);
     }
   });
 }
@@ -285,7 +277,7 @@ async function initPopup() {
 
 window.onload = () => {
   initPopup().catch((error) => {
-    logger.error(error);
+    console.error(error);
     alert(`error: ${error}`);
   });
 };

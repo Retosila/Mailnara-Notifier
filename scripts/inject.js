@@ -8,11 +8,13 @@ const watcher = new MailWatcher(config);
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (!chrome.runtime?.id) {
+    sendResponse({ ok: false });
     return;
   }
 
   if (!watcher) {
-    logger.error("watcher is not initalized yet.");
+    console.error("watcher is not initalized yet.");
+    sendResponse({ ok: false });
     return;
   }
 
@@ -21,11 +23,11 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
     if (isWatching) {
       watcher.startWatching();
-      logger.info("start watching...");
+      console.info("start watching...");
       sendResponse({ ok: true, isWatching: true });
     } else {
       watcher.stopWatching();
-      logger.info("stop watching...");
+      console.info("stop watching...");
       sendResponse({ ok: true, isWatching: false });
     }
   }
@@ -37,20 +39,18 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
       throw new Error("watcher is not initalized yet");
     }
 
-    const isWatching = (await storage.get("isWatching")) ?? false;
+    await watcher.loadWatcherState();
 
-    if (isWatching) {
-      if (isWatching) {
-        watcher.startWatching();
-        logger.info("start watching...");
-      } else {
-        watcher.stopWatching();
-        logger.info("stop watching...");
-      }
+    if (watcher.isWatching) {
+      watcher.startWatching();
+      console.info("start watching...");
+    } else {
+      watcher.stopWatching();
+      console.info("stop watching...");
     }
   } catch (error) {
-    logger.error(`failed to get watch state: ${error}`);
+    console.error(`failed to get watch state: ${error}`);
   }
 })();
 
-logger.debug("content script is injected");
+console.debug("content script is injected");
