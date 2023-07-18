@@ -32,25 +32,16 @@ class SlackNotifier extends Notifier {
         (async () => (await storage.get("slackChannelID")) ?? "")(),
       ]);
 
-      const result = await this.hasValidConfiguration(
-        slackAPIToken,
-        slackChannelID,
-        this.endpoint
-      );
-
-      if (result.ok) {
-        console.debug("slack configuration is validated");
-
-        this.token = slackAPIToken;
-        this.channelID = slackChannelID;
-        this.isPrepared = true;
-
-        console.info("notifier is prepared successfully");
-      } else {
+      if (!slackAPIToken || !slackChannelID) {
         throw new Error(
           `failed to validate slack configuration: ${result.error}`
         );
       }
+
+      this.token = slackAPIToken;
+      this.channelID = slackChannelID;
+
+      console.info("notifier is prepared successfully");
     } catch (error) {
       throw new Error(`failed to fetch slack configuration: ${error}`);
     }
@@ -76,52 +67,41 @@ class SlackNotifier extends Notifier {
 
       const data = await response.json();
 
+      if (!data.ok) {
+        let msg;
+
+        switch (data.error) {
+          case "invalid_auth":
+            msg =
+              "Slack API token is invalid. Please re-configure your Slack API token properly.";
+            break;
+
+          case "channel_not_found":
+            msg =
+              "Cannot find your Slack Channel. Please re-configure your Slack Channel ID properly.";
+            break;
+
+          default:
+            msg = data.error;
+        }
+
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "../assets/images/icon96.png",
+          title: "Mailnara Notifier",
+          message: `Failed to notify\nError: ${msg}`,
+        });
+      }
+
       if (data.ok) {
         console.debug(`success to notify: ${data.ts}`);
       } else {
-        throw new Error(data.error);
+        i;
+
+        throw new Error(`failed to send slack message: ${data.error}`);
       }
     } catch (error) {
       throw new Error(`failed to notify: ${error}`);
-    }
-  }
-
-  async hasValidConfiguration(slackAPIToken, slackChannelID, slackAPIEndpoint) {
-    console.debug(
-      `check slack configuration validty\napi token:${slackAPIToken}\nchannel id:${slackChannelID}\nendpoint:${slackAPIEndpoint}`
-    );
-
-    if (!slackAPIToken || !slackChannelID || !slackAPIEndpoint) {
-      return false;
-    }
-
-    // Post message to the given endpoint to check vitality.
-    const headers = {
-      Authorization: `Bearer ${slackAPIToken}`,
-      "Content-Type": "application/json; charset=UTF-8",
-    };
-
-    const body = JSON.stringify({
-      channel: slackChannelID,
-      text: "check slack configuration validity",
-    });
-
-    try {
-      const response = await fetch(slackAPIEndpoint, {
-        method: "POST",
-        headers: headers,
-        body: body,
-      });
-
-      const data = await response.json();
-
-      if (data.ok) {
-        return { ok: true };
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error) {
-      return { ok: false, error: error.toString() };
     }
   }
 }

@@ -80,7 +80,8 @@ class MailNotificationService {
               console.info("notified successfully");
               console.debug(`notified mail:\n${formattedMail}`);
             } catch (error) {
-              console.warn(`failed to notify mail: ${error}`);
+              const msg = `failed to notify mail: ${error}`;
+              console.warn(msg);
               this.tracker.rollback();
               console.info("rollback added hash");
               return;
