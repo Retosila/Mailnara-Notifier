@@ -180,14 +180,19 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   console.debug(`service worker is newly installed\nreason: ${details.reason}`);
+
+  const targetBaseURL = await storage.get("targetBaseURL");
+  if (targetBaseURL === undefined || targetBaseURL === null) {
+    return;
+  }
 
   const manifest = chrome.runtime.getManifest();
   const contentScripts = manifest.content_scripts;
 
-  const executeScriptsInTabs = async (matchPattern, scripts) => {
-    const tabs = await chrome.tabs.query({ url: matchPattern });
+  const executeScriptsInTabs = async (targetBaseURL, scripts) => {
+    const tabs = await chrome.tabs.query({ url: targetBaseURL });
     tabs.forEach((tab) => {
       scripts.forEach((script) => {
         chrome.scripting.executeScript(
@@ -207,12 +212,9 @@ chrome.runtime.onInstalled.addListener((details) => {
   };
 
   contentScripts.forEach((contentScript) => {
-    const matchPatterns = contentScript.matches;
     const scripts = contentScript.js;
-
-    matchPatterns.forEach((matchPattern) =>
-      executeScriptsInTabs(matchPattern, scripts)
-    );
+    // MUST append wild card to query all tabs starts with target base url.
+    executeScriptsInTabs(`${targetBaseURL}*`, scripts);
   });
 });
 

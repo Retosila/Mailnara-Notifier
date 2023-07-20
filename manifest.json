@@ -21,7 +21,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://mail.sds.co.kr/*"],
+      "matches": ["https://*/*"],
       "js": ["scripts/watcher.js", "scripts/inject.js"],
       "run_at": "document_end"
     }
@@ -30,5 +30,5 @@
     "service_worker": "scripts/background.js"
   },
   "permissions": ["storage", "tabs", "scripting", "notifications"],
-  "host_permissions": ["<all_urls>"]
+  "host_permissions": ["https://*/*"]
 }

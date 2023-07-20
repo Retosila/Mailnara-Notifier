@@ -41,37 +41,21 @@ class Config {
 }
 
 class MailWatcher {
-  static instance;
-
   observer;
   config;
   isWatching;
   cache;
 
   constructor(config) {
-    if (MailWatcher.instance) {
-      return MailWatcher.instance;
-    }
-
     this.isWatching = false;
     this.config = config;
     this.observer = null;
     this.cache = null;
-
-    MailWatcher.instance = this;
-  }
-
-  async loadWatcherState() {
-    try {
-      this.isWatching = (await storage.get("isWatching")) ?? false;
-    } catch (error) {
-      throw new Error(`failed to load watcher state: ${error}`);
-    }
   }
 
   startWatching() {
     this.observer = new MutationObserver(async () => {
-      const isTargetUrl = this.checkCurrentUrlIsTarget(config);
+      const isTargetUrl = this.checkCurrentUrlIsTarget(this.config);
       if (!isTargetUrl) {
         return;
       }
@@ -161,16 +145,24 @@ class MailWatcher {
   }
 
   checkCurrentUrlIsTarget(config) {
+    console.log(config);
     const currentUrl = window.location.href;
-    let suffix = "";
+    let suffix = "/";
     if (config.watchFirstPageOnly) {
-      suffix = "0/"; // Path varible for pagination. First page always use "0/".
+      suffix = "/0/"; // Path varible for pagination. First page always use "0/".
     }
 
     const isTargetUrl = config.targetMailboxes.some((targetMailbox) => {
-      const url = `${config.targetBaseURL}/${targetMailbox}/${suffix}`;
+      const url = `${config.targetBaseURL}${encodeURIComponent(
+        targetMailbox
+      )}${suffix}`;
+      console.log("currentURL: ", currentUrl);
+      console.log("targetURL: ", url);
+
       return currentUrl.startsWith(url);
     });
+
+    console.log("isTargetURL: ", isTargetUrl);
 
     return isTargetUrl;
   }
