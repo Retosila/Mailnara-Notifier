@@ -207,7 +207,9 @@ class MailWatcher {
 
   createMail(row) {
     const sender = row.querySelector("#user_name").textContent;
-    const titleElements = document.querySelectorAll("td.tit_box > a > span");
+    const titleElements = row
+      .querySelector("td.tit_box > a")
+      .querySelectorAll("span");
     const title = Array.from(titleElements).reduce((prev, curr, index) => {
       return prev + (index > 0 ? " " : "") + curr.textContent;
     }, "");
