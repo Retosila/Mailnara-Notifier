@@ -21,6 +21,7 @@ const storage = {
 };
 
 const DEBOUNCE_INTERVAL = 100;
+const URL_REGEX = /^http(s)?:\/\/[^\s/$.?#].[^\s]*$/i;
 
 let ui;
 let debouncer;
@@ -198,7 +199,7 @@ async function initListeners() {
     } catch (error) {
       const errorMsg = `failed to verify slack configuration: ${error}`;
       console.error(errorMsg);
-      alert(`Error: ${errorMsg}`);
+      alert(errorMsg);
     }
   });
 
@@ -208,6 +209,28 @@ async function initListeners() {
       const isInboxTargeted = ui.mailboxInboxCheckbox.checked;
       const isJunkTargeted = ui.mailboxJunkCheckbox.checked;
       const watchFirstPageOnly = ui.targetPageFirstRadio.checked;
+
+      if (!targetBaseURL) {
+        const errorMsg = "target base url is not set up";
+        console.error(errorMsg);
+        alert(`Error: ${errorMsg}`);
+        return;
+      }
+
+      if (!URL_REGEX.test(targetBaseURL)) {
+        const errorMsg = "invalid url foramt";
+        console.error(errorMsg);
+        alert(`Error: ${errorMsg}`);
+        return;
+      }
+
+      if (!isInboxTargeted && !isJunkTargeted) {
+        const errorMsg =
+          "target mailboxes are not set up. at least one mailbox must be selected";
+        console.error(errorMsg);
+        alert(`Error: ${errorMsg}`);
+        return;
+      }
 
       await storage.set("targetBaseURL", targetBaseURL);
       await storage.set("isInboxTargeted", isInboxTargeted);
@@ -234,7 +257,7 @@ async function initListeners() {
           if (!response.ok) {
             const errorMsg = `invalid response: ${response.error}`;
             console.error(errorMsg);
-            alert(`Error: ${errorMsg}`);
+            alert(errorMsg);
             return;
           }
 
@@ -247,7 +270,7 @@ async function initListeners() {
           } catch (error) {
             const errorMsg = `failed to get tabs: ${error}`;
             console.error(errorMsg);
-            alert(`Error: ${errorMsg}`);
+            alert(errorMsg);
             return;
           }
 
@@ -264,7 +287,7 @@ async function initListeners() {
               } catch (error) {
                 const errorMsg = `failed to save settings: ${error}`;
                 console.error(errorMsg);
-                alert(`Error: ${errorMsg}`);
+                alert(errorMsg);
                 return;
               }
 
@@ -312,7 +335,7 @@ async function initListeners() {
                     } catch (error) {
                       const errorMsg = `failed to save settings: ${error}`;
                       console.error(errorMsg);
-                      alert(`Error: ${errorMsg}`);
+                      alert(errorMsg);
                       return;
                     }
 
@@ -337,7 +360,7 @@ async function initListeners() {
             } catch (error) {
               const errorMsg = `unknown error: ${error}`;
               console.error(errorMsg);
-              alert(`Error: ${errorMsg}`);
+              alert(errorMsg);
               return;
             }
           }
@@ -346,7 +369,7 @@ async function initListeners() {
     } catch (error) {
       const errorMsg = `unknown error: ${error}`;
       console.error(errorMsg);
-      alert(`Error: ${errorMsg}`);
+      alert(errorMsg);
     }
   });
 }
@@ -360,6 +383,6 @@ window.onload = () => {
   initPopup().catch((error) => {
     const errorMsg = `failed to initialize popup: ${error}`;
     console.error(errorMsg);
-    alert(`Error: ${errorMsg}`);
+    alert(errorMsg);
   });
 };
