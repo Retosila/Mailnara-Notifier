@@ -20,7 +20,10 @@ const storage = {
   },
 };
 
+const DEBOUNCE_INTERVAL = 100;
+
 let ui;
+let debouncer;
 
 document.addEventListener("DOMContentLoaded", () => {
   ui = {
@@ -291,28 +294,35 @@ async function initListeners() {
                     return;
                   }
 
-                  try {
-                    await storage.set("isWatching", response.isWatching);
-                  } catch (error) {
-                    console.error(error);
-                    return;
+                  // Use debouncer to ignore redundant alert.
+                  if (debouncer) {
+                    clearTimeout(debouncer);
                   }
 
-                  ui.setWatcherButtonText(response.isWatching);
+                  debouncer = setTimeout(async () => {
+                    try {
+                      await storage.set("isWatching", response.isWatching);
+                    } catch (error) {
+                      console.error(error);
+                      return;
+                    }
 
-                  if (response.isWatching === true) {
-                    ui.hide(ui.configureButton);
-                    ui.disable(ui.targetBaseURLInput);
-                    ui.disable(ui.targetMailboxFieldset);
-                    ui.disable(ui.targetPageFieldset);
-                    alert("Start watching mailbox!");
-                  } else {
-                    ui.show(ui.configureButton);
-                    ui.enable(ui.targetBaseURLInput);
-                    ui.enable(ui.targetMailboxFieldset);
-                    ui.enable(ui.targetPageFieldset);
-                    alert("Stop watching mailbox.");
-                  }
+                    ui.setWatcherButtonText(response.isWatching);
+
+                    if (response.isWatching === true) {
+                      ui.hide(ui.configureButton);
+                      ui.disable(ui.targetBaseURLInput);
+                      ui.disable(ui.targetMailboxFieldset);
+                      ui.disable(ui.targetPageFieldset);
+                      alert("Start watching mailbox!");
+                    } else {
+                      ui.show(ui.configureButton);
+                      ui.enable(ui.targetBaseURLInput);
+                      ui.enable(ui.targetMailboxFieldset);
+                      ui.enable(ui.targetPageFieldset);
+                      alert("Stop watching mailbox.");
+                    }
+                  }, DEBOUNCE_INTERVAL);
                 }
               );
             } catch (error) {
