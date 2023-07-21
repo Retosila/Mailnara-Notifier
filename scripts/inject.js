@@ -1,5 +1,12 @@
 let watcher;
 
+async function isTarget() {
+  const isTargetUrl = this.checkCurrentUrlIsTarget(this.config);
+  if (!isTargetUrl) {
+    return;
+  }
+}
+
 async function initMailWatcher() {
   const targetMailboxes = [];
   const [targetBaseURL, isInboxTargeted, isJunkTargeted, watchFirstPageOnly] =
@@ -48,8 +55,6 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     sendResponse({ ok: true });
     return;
   }
-
-  console.log("Called!");
 
   if (message.event == "onWatcherStateChanged") {
     let isWatching = message.data;
