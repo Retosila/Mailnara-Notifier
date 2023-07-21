@@ -23,6 +23,8 @@ const storage = {
 const DEBOUNCE_INTERVAL = 100;
 const URL_REGEX = /^http(s)?:\/\/[^\s/$.?#].[^\s]*$/i;
 
+const contentScripts = ["scripts/watcher.js", "scripts/inject.js"];
+
 let ui;
 let debouncer;
 
@@ -346,6 +348,25 @@ async function initListeners() {
                       ui.disable(ui.targetBaseURLInput);
                       ui.disable(ui.targetMailboxFieldset);
                       ui.disable(ui.targetPageFieldset);
+
+                      const targetBaseURL = await storage.get("targetBaseURL");
+                      if (
+                        targetBaseURL === undefined ||
+                        targetBaseURL === null
+                      ) {
+                        return;
+                      }
+
+                      // MUST append wild card to query all tabs starts with target base url.
+                      const matchPattern = `${targetBaseURL}*`;
+                      const tabs = await chrome.tabs.query({
+                        url: matchPattern,
+                      });
+                      for (const tab of tabs) {
+                        // Reload all targeted tab to initialize mail watcher with new configuration.
+                        chrome.tabs.reload(tab.id);
+                      }
+
                       alert("Start watching mailbox!");
                     } else {
                       ui.show(ui.configureButton);
