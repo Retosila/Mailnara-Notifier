@@ -55,8 +55,8 @@ class MailWatcher {
 
   startWatching() {
     this.observer = new MutationObserver(async () => {
-      const isTargetUrl = this.checkCurrentUrlIsTarget(this.config);
-      if (!isTargetUrl) {
+      const isTargetURL = this.checkCurrentUrlIsTarget();
+      if (!isTargetURL) {
         return;
       }
 
@@ -144,27 +144,30 @@ class MailWatcher {
     }
   }
 
-  checkCurrentUrlIsTarget(config) {
-    console.log(config);
-    const currentUrl = window.location.href;
+  checkCurrentUrlIsTarget() {
+    if (!this.config) {
+      return false;
+    }
+
+    const currentURL = window.location.href;
     let suffix = "/";
-    if (config.watchFirstPageOnly) {
+    if (this.config.watchFirstPageOnly) {
       suffix = "/0/"; // Path varible for pagination. First page always use "0/".
     }
 
-    const isTargetUrl = config.targetMailboxes.some((targetMailbox) => {
-      const url = `${config.targetBaseURL}${encodeURIComponent(
+    const isTargetURL = this.config.targetMailboxes.some((targetMailbox) => {
+      const URL = `${this.config.targetBaseURL}${encodeURIComponent(
         targetMailbox
       )}${suffix}`;
-      console.log("currentURL: ", currentUrl);
-      console.log("targetURL: ", url);
+      console.debug(`currentURL: ${currentURL}`);
+      console.debug(`targetURL: ${currentURL}`);
 
-      return currentUrl.startsWith(url);
+      return currentURL.startsWith(URL);
     });
 
-    console.log("isTargetURL: ", isTargetUrl);
+    console.debug(`isTargetURL: ${isTargetURL}`);
 
-    return isTargetUrl;
+    return isTargetURL;
   }
 
   getMailRows() {

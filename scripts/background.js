@@ -155,13 +155,28 @@ function keepAlive() {
     }
   });
 
-  (async () => {
-    await injectHeartbeater();
-  })();
+  injectHeartbeater();
+}
+
+function executeScriptsInTab(tabId, url, scripts) {
+  chrome.scripting.executeScript(
+    { target: { tabId: tabId }, files: scripts },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.debug(chrome.runtime.lastError.message);
+      } else {
+        scripts.forEach((script) => {
+          console.debug(`"${script}" is successfully injected into ${url}`);
+        });
+      }
+    }
+  );
 }
 
 keepAlive();
 console.info("make service worker keep alive");
+
+const contentScripts = ["scripts/watcher.js", "scripts/inject.js"];
 
 let notifier;
 let tracker;
@@ -180,6 +195,25 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   }
 });
 
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete") {
+    const targetBaseURL = await storage.get("targetBaseURL");
+    if (targetBaseURL === undefined || targetBaseURL === null) {
+      console.debug("target base url is not set yet");
+      return;
+    }
+
+    if (!tab.url.startsWith(targetBaseURL)) {
+      console.debug(
+        `${tab.url} does not match with target base url: ${targetBaseURL}`
+      );
+      return;
+    }
+
+    executeScriptsInTab(tabId, tab.url, contentScripts);
+  }
+});
+
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.debug(`service worker is newly installed\nreason: ${details.reason}`);
 
@@ -188,34 +222,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     return;
   }
 
-  const manifest = chrome.runtime.getManifest();
-  const contentScripts = manifest.content_scripts;
-
-  const executeScriptsInTabs = async (targetBaseURL, scripts) => {
-    const tabs = await chrome.tabs.query({ url: targetBaseURL });
-    tabs.forEach((tab) => {
-      scripts.forEach((script) => {
-        chrome.scripting.executeScript(
-          { target: { tabId: tab.id }, files: [script] },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.debug(chrome.runtime.lastError.message);
-            } else {
-              console.debug(
-                `script ${script} injected successfully into ${tab.url}.`
-              );
-            }
-          }
-        );
-      });
-    });
-  };
-
-  contentScripts.forEach((contentScript) => {
-    const scripts = contentScript.js;
-    // MUST append wild card to query all tabs starts with target base url.
-    executeScriptsInTabs(`${targetBaseURL}*`, scripts);
-  });
+  // MUST append wild card to query all tabs starts with target base url.
+  const matchPattern = `${targetBaseURL}*`;
+  const tabs = await chrome.tabs.query({ url: matchPattern });
+  for (const tab of tabs) {
+    executeScriptsInTab(tab.id, tab.url, contentScripts);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
