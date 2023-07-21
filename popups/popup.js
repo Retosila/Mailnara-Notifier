@@ -99,7 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("version").textContent = `v${version}`;
   } catch (error) {
-    console.error("error while getting manifest data: ", error);
+    const errorMsg = `error while getting manifest data: ${error}`;
+    console.error(errorMsg);
+    alert(`Error: ${errorMsg}`);
   }
 });
 
@@ -119,9 +121,7 @@ async function loadSettings() {
       (async () => (await storage.get("slackChannelID")) ?? "")(),
       (async () => (await storage.get("isWatching")) ?? false)(),
       (async () => (await storage.get("hasSavedSettings")) ?? false)(),
-      (async () =>
-        (await storage.get("targetBaseURL")) ??
-        "https://mail.sds.co.kr/new_mailnara_web-v5.0/index.php/mail/mail_list/")(),
+      (async () => (await storage.get("targetBaseURL")) ?? "")(),
       (async () => (await storage.get("isInboxTargeted")) ?? true)(),
       (async () => (await storage.get("isJunkTargeted")) ?? false)(),
       (async () => (await storage.get("watchFirstPageOnly")) ?? true)(),
@@ -196,8 +196,9 @@ async function initListeners() {
       ui.toggleConfigurationVisibility(true);
       alert("Slack configuration is verified successfully.");
     } catch (error) {
-      console.debug(`failed to verify slack configuration: ${error}`);
-      alert("Failed to verify slack configuration.");
+      const errorMsg = `failed to verify slack configuration: ${error}`;
+      console.error(errorMsg);
+      alert(`Error: ${errorMsg}`);
     }
   });
 
@@ -231,7 +232,9 @@ async function initListeners() {
         },
         async (response) => {
           if (!response.ok) {
-            console.error(`invalid response: ${response.error}`);
+            const errorMsg = `invalid response: ${response.error}`;
+            console.error(errorMsg);
+            alert(`Error: ${errorMsg}`);
             return;
           }
 
@@ -242,7 +245,9 @@ async function initListeners() {
               url: `${targetBaseURL}*`, // MUST append wild card to query all tabs starts with target base url.
             });
           } catch (error) {
-            console.error(error);
+            const errorMsg = `failed to get tabs: ${error}`;
+            console.error(errorMsg);
+            alert(`Error: ${errorMsg}`);
             return;
           }
 
@@ -257,7 +262,9 @@ async function initListeners() {
               try {
                 await storage.set("isWatching", false);
               } catch (error) {
-                console.error(error);
+                const errorMsg = `failed to save settings: ${error}`;
+                console.error(errorMsg);
+                alert(`Error: ${errorMsg}`);
                 return;
               }
 
@@ -303,7 +310,9 @@ async function initListeners() {
                     try {
                       await storage.set("isWatching", response.isWatching);
                     } catch (error) {
-                      console.error(error);
+                      const errorMsg = `failed to save settings: ${error}`;
+                      console.error(errorMsg);
+                      alert(`Error: ${errorMsg}`);
                       return;
                     }
 
@@ -326,14 +335,18 @@ async function initListeners() {
                 }
               );
             } catch (error) {
-              console.error(error);
+              const errorMsg = `unknown error: ${error}`;
+              console.error(errorMsg);
+              alert(`Error: ${errorMsg}`);
               return;
             }
           }
         }
       );
     } catch (error) {
-      console.error(`failed to handle button click event: ${error}`);
+      const errorMsg = `unknown error: ${error}`;
+      console.error(errorMsg);
+      alert(`Error: ${errorMsg}`);
     }
   });
 }
@@ -345,7 +358,8 @@ async function initPopup() {
 
 window.onload = () => {
   initPopup().catch((error) => {
-    console.error(error);
-    alert(`error: ${error}`);
+    const errorMsg = `failed to initialize popup: ${error}`;
+    console.error(errorMsg);
+    alert(`Error: ${errorMsg}`);
   });
 };
