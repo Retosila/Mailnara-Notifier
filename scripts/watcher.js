@@ -41,69 +41,80 @@ class Config {
 }
 
 class MailWatcher {
+  static DEBOUNCE_INTERVAL = 500;
+
   observer;
   config;
   isWatching;
   cache;
+  debouncer;
 
   constructor(config) {
     this.isWatching = false;
     this.config = config;
     this.observer = null;
     this.cache = null;
+    this.debouncer = null;
   }
 
   startWatching() {
-    this.observer = new MutationObserver(async () => {
-      const isTargetURL = this.checkCurrentUrlIsTarget();
-      if (!isTargetURL) {
-        return;
+    this.observer = new MutationObserver(() => {
+      // Use debouncing logic so as to ignore redundant callbacks.
+      if (this.debouncer) {
+        clearTimeout(this.debouncer);
       }
 
-      const mailRows = this.getMailRows();
-      if (mailRows === null || mailRows.length === 0) {
-        return;
-      }
+      this.debouncer = setTimeout(async () => {
+        const isTargetURL = this.checkCurrentUrlIsTarget();
+        if (!isTargetURL) {
+          return;
+        }
 
-      // Check any new mail has been received.
-      if (JSON.stringify(this.cache) === JSON.stringify(mailRows)) {
-        console.debug("no change is detected");
-        return;
-      }
+        const mailRows = this.getMailRows();
+        if (mailRows === null || mailRows.length === 0) {
+          return;
+        }
 
-      if (!(await this.isServiceRunning())) {
-        console.info("service is not running");
-        return;
-      }
+        // Check any new mail has been received.
+        if (JSON.stringify(this.cache) === JSON.stringify(mailRows)) {
+          console.debug("no change is detected");
+          return;
+        }
 
-      this.cache = mailRows;
+        if (!(await this.isServiceRunning())) {
+          console.info("service is not running");
+          return;
+        }
 
-      const newMails = mailRows.map(this.createMail);
-      console.info(`new mails: ${newMails.length}`);
+        this.cache = mailRows;
 
-      newMails.forEach((newMail) => {
-        console.debug(newMail.title);
-      });
+        const newMails = mailRows.map(this.createMail);
+        console.info(`new mails: ${newMails.length}`);
 
-      try {
-        chrome.runtime.sendMessage(
-          {
-            event: "onNewMailsReceived",
-            data: newMails,
-          },
-          (response) => {
-            if (!response.ok) {
-              console.error(`invalid response: ${response.error}`);
-              this.cache = null;
-              return;
+        newMails.forEach((newMail) => {
+          console.debug(newMail.title);
+        });
+
+        try {
+          chrome.runtime.sendMessage(
+            {
+              event: "onNewMailsReceived",
+              data: newMails,
+            },
+            (response) => {
+              if (!response.ok) {
+                console.error(`invalid response: ${response.error}`);
+                this.cache = null;
+                return;
+              }
+
+              console.debug("success to pass new mails to notifier");
             }
-
-            console.debug("success to pass new mails to notifier");
-          }
-        );
-      } catch (error) {
-        console.debug(`failed to pass new mails to notifier: ${error}`);
-      }
+          );
+        } catch (error) {
+          console.debug(`failed to pass new mails to notifier: ${error}`);
+        }
+      }, MailWatcher.DEBOUNCE_INTERVAL);
     });
 
     this.observer.observe(document.body, { childList: true, subtree: true });
