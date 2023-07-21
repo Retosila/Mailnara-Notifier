@@ -193,7 +193,10 @@ class MailWatcher {
 
   createMail(row) {
     const sender = row.querySelector("#user_name").textContent;
-    const title = row.querySelector("td.tit_box > a > span").textContent;
+    const titleElements = document.querySelectorAll("td.tit_box > a > span");
+    const title = Array.from(titleElements).reduce((prev, curr, index) => {
+      return prev + (index > 0 ? " " : "") + curr.textContent;
+    }, "");
     const content = row.querySelector("td.tit_box > a").getAttribute("title");
     const timestamp = row.querySelector("#data_name").textContent;
     const size = row.querySelector("#size_name").textContent;
