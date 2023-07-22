@@ -259,8 +259,8 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
-  if (message.event === "onSaveButtonClicked") {
-    console.debug("onSaveButtonClicked");
+  if (message.event === "onSaveNotifierSettingsButtonClicked") {
+    console.debug("onSaveNotifierSettingsButtonClicked");
 
     if (!message.data.slackAPIToken) {
       console.error("slack api token is empty");
@@ -279,7 +279,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
         await Promise.all([
           storage.set("slackAPIToken", message.data.slackAPIToken),
           storage.set("slackChannelID", message.data.slackChannelID),
-          storage.set("hasSavedSettings", true),
+          storage.set("hasSavedNotifierSettings", true),
         ]);
 
         notifier = new SlackNotifier();
@@ -304,7 +304,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
           await Promise.all([
             storage.remove("slackAPIToken"),
             storage.remove("slackChannelID"),
-            storage.remove("hasSavedSettings"),
+            storage.remove("hasSavedNotifierSettings"),
           ]);
 
           sendResponse({ ok: false, error: error.toString() });
@@ -326,12 +326,13 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
 (async () => {
   try {
-    const hasSavedSettings = (await storage.get("hasSavedSettings")) ?? false;
+    const hasSavedNotifierSettings =
+      (await storage.get("hasSavedNotifierSettings")) ?? false;
     const isWatching = (await storage.get("isWatching")) ?? false;
-    console.debug(`hasSavedSettings: ${hasSavedSettings}`);
+    console.debug(`hasSavedNotifierSettings: ${hasSavedNotifierSettings}`);
     console.debug(`isWatching: ${isWatching}`);
 
-    if (!hasSavedSettings) {
+    if (!hasSavedNotifierSettings) {
       console.info("slack api setting is not set yet");
       return;
     }
