@@ -4,7 +4,16 @@
   "version": "0.2.8",
   "description": "Notify of mailnara mail",
   "scripts": {
-    "build": "npx tailwindcss build -i src/styles.css -o popups/style.css"
+    "build:dev": "cross-env NODE_ENV=development node buildscript.js",
+    "build:prod": "cross-env NODE_ENV=production node buildscript.js"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@babel/cli": "^7.22.9",
+    "@babel/core": "^7.22.9",
+    "@babel/preset-env": "^7.22.9",
+    "babel-plugin-transform-remove-console": "^6.9.4",
+    "cross-env": "^7.0.3",
+    "shx": "^0.3.4"
+  }
 }
