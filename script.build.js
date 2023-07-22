@@ -17,4 +17,4 @@ execSync("shx rm -rf dist/tailwind.css");
 execSync("npx babel src --out-dir dist");
 
 // Bundling css file
-execSync("npx tailwindcss build -i src/tailwind.css -o dist/popups/style.css");
+execSync("npx tailwindcss build -i tailwind.css -o dist/popups/style.css");
