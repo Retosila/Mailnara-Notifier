@@ -1,6 +1,6 @@
 {
   "name": "Mailnara Notifier",
-  "version": "0.2.8",
+  "version": "0.0.0",
   "manifest_version": 3,
   "description": "Notify of mailnara mail",
   "author": "Retosila",
@@ -22,6 +22,13 @@
   "background": {
     "service_worker": "scripts/background.js"
   },
-  "permissions": ["storage", "tabs", "scripting", "notifications"],
-  "host_permissions": ["https://*/*"]
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ]
 }

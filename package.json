@@ -1,11 +1,12 @@
 {
   "name": "mailnara-notifier",
   "author": "Retosila",
-  "version": "0.2.8",
+  "version": "0.0.0",
   "description": "Notify of mailnara mail",
   "scripts": {
-    "build:dev": "cross-env NODE_ENV=development node buildscript.js",
-    "build:prod": "cross-env NODE_ENV=production node buildscript.js"
+    "build:dev": "cross-env NODE_ENV=development node script.build.js",
+    "build:prod": "cross-env NODE_ENV=production node script.build.js",
+    "update:version": "node script.version.js"
   },
   "license": "Apache-2.0",
   "devDependencies": {
