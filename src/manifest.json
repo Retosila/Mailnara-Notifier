@@ -1,6 +1,6 @@
 {
   "name": "Mailnara Notifier",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "manifest_version": 3,
   "description": "기업메일 & 그룹웨어 서비스 메일나라를 위한 알리미 앱",
   "author": "Retosila",
@@ -22,6 +22,13 @@
   "background": {
     "service_worker": "scripts/background.js"
   },
-  "permissions": ["storage", "tabs", "scripting", "notifications"],
-  "host_permissions": ["https://*/*"]
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ]
 }
