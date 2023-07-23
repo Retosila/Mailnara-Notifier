@@ -309,26 +309,6 @@ async function initListeners() {
 
       const newWatcherState = !isWatching;
 
-      const response = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage(
-          {
-            event: "onWatcherStateChanged",
-            data: newWatcherState,
-          },
-          (result) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError.message);
-            } else {
-              resolve(result);
-            }
-          }
-        );
-      });
-
-      if (!response.ok) {
-        throw new Error(`invalid response: ${response.error}`);
-      }
-
       const tabs = await chrome.tabs.query({
         url: `${targetBaseURL}*`, // MUST append wild card to query all tabs starts with target base url.
       });
@@ -337,6 +317,30 @@ async function initListeners() {
       tabs.forEach((tab) => {
         console.debug("tab: " + tab.id);
       });
+
+      if (tabs.length === 0) {
+        console.info("no matching tab found");
+        if (isWatching) {
+          try {
+            await storage.set("isWatching", false);
+          } catch (error) {
+            throw new Error(error);
+          }
+
+          ui.setWatcherButtonText(newWatcherState);
+          ui.show(ui.changeNotifierSettingsButton);
+          ui.enable(ui.targetBaseURLInput);
+          ui.enable(ui.targetMailboxFieldset);
+          ui.enable(ui.targetPageFieldset);
+          alert("Stop watching mailbox.");
+        } else {
+          alert(
+            `Cannot find any matching tabs.\nAt least one matching tab must exist in runtime:\n${targetBaseURL}*`
+          );
+        }
+
+        return;
+      }
 
       const promises = tabs.map(
         (tab) =>
@@ -396,6 +400,26 @@ async function initListeners() {
           }
         }, DEBOUNCE_INTERVAL);
       });
+
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            event: "onWatcherStateChanged",
+            data: newWatcherState,
+          },
+          (result) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError.message);
+            } else {
+              resolve(result);
+            }
+          }
+        );
+      });
+
+      if (!response.ok) {
+        throw new Error(`invalid response: ${response.error}`);
+      }
     } catch (error) {
       console.error(error);
       alert(error);
