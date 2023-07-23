@@ -167,13 +167,13 @@ class MailWatcher {
     }
 
     const isTargetURL = this.config.targetMailboxes.some((targetMailbox) => {
-      const URL = `${this.config.targetBaseURL}${encodeURIComponent(
+      const targetURL = `${this.config.targetBaseURL}${encodeURIComponent(
         targetMailbox
       )}${suffix}`;
       console.debug(`currentURL: ${currentURL}`);
-      console.debug(`targetURL: ${currentURL}`);
+      console.debug(`targetURL: ${targetURL}`);
 
-      return currentURL.startsWith(URL);
+      return currentURL.startsWith(targetURL);
     });
 
     console.debug(`isTargetURL: ${isTargetURL}`);
