@@ -2,7 +2,7 @@
   "name": "Mailnara Notifier",
   "version": "0.3.0",
   "manifest_version": 3,
-  "description": "Notify of mailnara mail",
+  "description": "기업메일 & 그룹웨어 서비스 메일나라를 위한 알리미 앱",
   "author": "Retosila",
   "icons": {
     "16": "assets/images/icon16.png",
@@ -12,7 +12,7 @@
     "128": "assets/images/icon128.png"
   },
   "action": {
-    "default_title": "Mail Notifier",
+    "default_title": "Mailnara Notifier",
     "default_icon": {
       "19": "assets/images/icon19.png",
       "38": "assets/images/icon38.png"
@@ -22,13 +22,6 @@
   "background": {
     "service_worker": "scripts/background.js"
   },
-  "permissions": [
-    "storage",
-    "tabs",
-    "scripting",
-    "notifications"
-  ],
-  "host_permissions": [
-    "https://*/*"
-  ]
+  "permissions": ["storage", "tabs", "scripting", "notifications"],
+  "host_permissions": ["https://*/*"]
 }
