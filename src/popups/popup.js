@@ -322,6 +322,26 @@ async function initListeners() {
         console.info("no matching tab found");
         if (isWatching) {
           try {
+            const response = await new Promise((resolve, reject) => {
+              chrome.runtime.sendMessage(
+                {
+                  event: "onWatcherStateChanged",
+                  data: newWatcherState,
+                },
+                (result) => {
+                  if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError.message);
+                  } else {
+                    resolve(result);
+                  }
+                }
+              );
+            });
+
+            if (!response.ok) {
+              throw new Error(`invalid response: ${response.error}`);
+            }
+
             await storage.set("isWatching", false);
           } catch (error) {
             throw new Error(error);
