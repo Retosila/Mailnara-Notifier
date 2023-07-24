@@ -18,4 +18,5 @@ const packageLockJson = JSON.parse(
   fs.readFileSync("package-lock.json", "utf8")
 );
 packageLockJson.version = version;
+packageLockJson.packages[""].version = version;
 fs.writeFileSync("package-lock.json", JSON.stringify(packageLockJson, null, 2));
