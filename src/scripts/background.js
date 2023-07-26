@@ -124,20 +124,31 @@ function keepAlive() {
   }
 
   async function injectHeartbeater() {
-    await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, (tabs) => {
-      if (tabs.length > 0) {
-        const currentTabExists = tabs.some((tab) => tab.id === currentTabId);
+    await chrome.tabs.query(
+      { url: ["http://*/*", "https://*/*"] },
+      async (tabs) => {
+        for (let i = 0; i < tabs.length; i++) {
+          const tab = tabs[i];
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: heartbeater,
+            });
 
-        if (!currentTabExists) {
-          currentTabId = tabs[0].id;
-
-          chrome.scripting.executeScript({
-            target: { tabId: currentTabId },
-            func: heartbeater,
-          });
+            currentTabId = tab.id;
+            console.info(
+              `success to inject heartbeater into tab with id ${tab.id}`
+            );
+            break;
+          } catch (error) {
+            console.warn(
+              `failed to inject heartbeater into tab with id ${tab.id}: ${error}. try next tab...`
+            );
+            continue;
+          }
         }
       }
-    });
+    );
   }
 
   chrome.runtime.onConnect.addListener((port) => {
