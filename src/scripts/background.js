@@ -124,12 +124,32 @@ function keepAlive() {
   }
 
   async function injectHeartbeater() {
+    console.debug("try to inject heartbeater");
     await chrome.tabs.query(
       { url: ["http://*/*", "https://*/*"] },
       async (tabs) => {
-        for (let i = 0; i < tabs.length; i++) {
-          const tab = tabs[i];
+        let hasHeartbeater = false;
+        for (const tab of tabs) {
+          if (tab.id === currentTabId) {
+            hasHeartbeater = true;
+            break;
+          }
+        }
+
+        if (hasHeartbeater) {
+          console.debug("heartbeater already does exist");
+          return;
+        }
+
+        for (const tab of tabs) {
           try {
+            if (tab.id === currentTabId) {
+              console.debug(
+                `${tab.id} tab has already been injected heartbeater`
+              );
+              return;
+            }
+
             await chrome.scripting.executeScript({
               target: { tabId: tab.id },
               func: heartbeater,
