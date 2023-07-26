@@ -229,7 +229,11 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
     const targetBaseURL = await storage.get("targetBaseURL");
-    if (targetBaseURL === undefined || targetBaseURL === null) {
+    if (
+      targetBaseURL === undefined ||
+      targetBaseURL === null ||
+      targetBaseURL === ""
+    ) {
       console.debug("target base url is not set yet");
       return;
     }
@@ -293,63 +297,115 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.event === "onSaveNotifierSettingsButtonClicked") {
     console.debug("onSaveNotifierSettingsButtonClicked");
 
-    if (!message.data.slackAPIToken) {
-      console.error("slack api token is empty");
-      sendResponse({ ok: false, error: "slack api token is empty" });
-      return;
-    }
+    console.log(message.data.notifierType);
 
-    if (!message.data.slackChannelID) {
-      console.error("slack channel id is empty");
-      sendResponse({ ok: false, error: "slack channel id is empty" });
-      return;
-    }
-
-    (async () => {
-      try {
-        await Promise.all([
-          storage.set("slackAPIToken", message.data.slackAPIToken),
-          storage.set("slackChannelID", message.data.slackChannelID),
-          storage.set("hasSavedNotifierSettings", true),
-        ]);
-
-        notifier = new SlackNotifier();
-        tracker = new NotifiedMailTracker();
-        service = new MailNotificationService(notifier, tracker);
-        console.info("service is initialized");
-
-        if (!service.isPrepared) {
-          console.info(
-            "slack api setting and service is intialized, but not prepared yet"
-          );
-
-          // Must call suspend() before preare() not to refer old listener.
-          service.suspend();
-          await service.prepare();
-          console.info("mail notification service is prepared");
-        }
-
-        sendResponse({ ok: true });
-      } catch (error) {
+    if (message.data.notifierType === "chrome") {
+      (async () => {
         try {
+          await Promise.all([
+            storage.set("notifierType", message.data.notifierType),
+            storage.set("hasSavedNotifierSettings", true),
+          ]);
+
+          notifier = new ChromeNotifier();
+
+          tracker = new NotifiedMailTracker();
+          service = new MailNotificationService(notifier, tracker);
+          console.info("service is initialized");
+
+          if (!service.isPrepared) {
+            console.info("service is intialized, but not prepared yet");
+
+            // Must call suspend() before preare() not to refer old listener.
+            service.suspend();
+            await service.prepare();
+            console.info("mail notification service is prepared");
+          }
+
           await Promise.all([
             storage.remove("slackAPIToken"),
             storage.remove("slackChannelID"),
-            storage.remove("hasSavedNotifierSettings"),
           ]);
 
-          sendResponse({ ok: false, error: error.toString() });
-          console.info(
-            `failed to save slack configuration: ${error.toString()}`
-          );
+          sendResponse({ ok: true });
         } catch (error) {
-          sendResponse({ ok: false, error: error.toString() });
-          console.info(
-            `failed to clear slack configuration: ${error.toString()}`
-          );
+          try {
+            await Promise.all([
+              storage.remove("notifierType"),
+              storage.remove("hasSavedNotifierSettings"),
+            ]);
+
+            sendResponse({ ok: false, error: error.toString() });
+            console.info(
+              `failed to save notifier settings: ${error.toString()}`
+            );
+          } catch (error) {
+            sendResponse({ ok: false, error: error.toString() });
+            console.info(
+              `failed to clear notifier settings: ${error.toString()}`
+            );
+          }
         }
+      })();
+    } else if (message.data.notifierType === "slack") {
+      if (!message.data.slackAPIToken) {
+        console.error("slack api token is empty");
+        sendResponse({ ok: false, error: "slack api token is empty" });
+        return;
       }
-    })();
+
+      if (!message.data.slackChannelID) {
+        console.error("slack channel id is empty");
+        sendResponse({ ok: false, error: "slack channel id is empty" });
+        return;
+      }
+
+      (async () => {
+        try {
+          await Promise.all([
+            storage.set("notifierType", message.data.notifierType),
+            storage.set("slackAPIToken", message.data.slackAPIToken),
+            storage.set("slackChannelID", message.data.slackChannelID),
+            storage.set("hasSavedNotifierSettings", true),
+          ]);
+
+          notifier = new SlackNotifier();
+          tracker = new NotifiedMailTracker();
+          service = new MailNotificationService(notifier, tracker);
+          console.info("service is initialized");
+
+          if (!service.isPrepared) {
+            console.info("service is intialized, but not prepared yet");
+
+            // Must call suspend() before preare() not to refer old listener.
+            service.suspend();
+            await service.prepare();
+            console.info("mail notification service is prepared");
+          }
+
+          sendResponse({ ok: true });
+        } catch (error) {
+          try {
+            await Promise.all([
+              storage.remove("notifierType"),
+              storage.remove("slackAPIToken"),
+              storage.remove("slackChannelID"),
+              storage.remove("hasSavedNotifierSettings"),
+            ]);
+
+            sendResponse({ ok: false, error: error.toString() });
+            console.info(
+              `failed to save notifier settings: ${error.toString()}`
+            );
+          } catch (error) {
+            sendResponse({ ok: false, error: error.toString() });
+            console.info(
+              `failed to clear notifier settings: ${error.toString()}`
+            );
+          }
+        }
+      })();
+    }
 
     return true;
   }
@@ -357,6 +413,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 
 (async () => {
   try {
+    const notifierType = (await storage.get("notifierType")) ?? "chrome";
     const hasSavedNotifierSettings =
       (await storage.get("hasSavedNotifierSettings")) ?? false;
     const isWatching = (await storage.get("isWatching")) ?? false;
@@ -364,19 +421,22 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     console.debug(`isWatching: ${isWatching}`);
 
     if (!hasSavedNotifierSettings) {
-      console.info("slack api setting is not set yet");
+      console.info("notifier setting is not set yet");
       return;
     }
 
-    notifier = new SlackNotifier();
+    if (notifierType === "chrome") {
+      notifier = new ChromeNotifier();
+    } else if (notifierType === "slack") {
+      notifier = new SlackNotifier();
+    }
+
     tracker = new NotifiedMailTracker();
     service = new MailNotificationService(notifier, tracker);
     console.info("service is initialized");
 
     if (!service.isPrepared) {
-      console.info(
-        "slack api setting and service is intialized, but not prepared yet"
-      );
+      console.info("service is intialized, but not prepared yet");
 
       // Must call suspend() before preare() not to refer old listener.
       service.suspend();

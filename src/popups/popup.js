@@ -30,6 +30,9 @@ let debouncer;
 
 document.addEventListener("DOMContentLoaded", () => {
   ui = {
+    notifierTypeFieldset: document.getElementById("notifier-type"),
+    chromeNotifierRadio: document.getElementById("chrome-notifier"),
+    slackNotifierRadio: document.getElementById("slack-notifier"),
     changeNotifierSettingsButton: document.getElementById(
       "change-notifier-settings"
     ),
@@ -57,8 +60,19 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     },
 
+    toggleSlackSettingsVisibility: (isShown) => {
+      if (isShown) {
+        ui.show(ui.slackAPITokenInput);
+        ui.show(ui.slackChannelIDInput);
+      } else {
+        ui.hide(ui.slackAPITokenInput);
+        ui.hide(ui.slackChannelIDInput);
+      }
+    },
+
     toggleConfigurationVisibility: (hasSavedNotifierSettings) => {
       if (hasSavedNotifierSettings) {
+        ui.hide(ui.notifierTypeFieldset);
         ui.hide(ui.slackAPITokenInput);
         ui.hide(ui.slackChannelIDInput);
         ui.hide(ui.saveNotifierSettingsButton);
@@ -69,6 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ui.show(ui.applyConfigsButton);
         ui.show(ui.watchToggleButton);
       } else {
+        ui.show(ui.notifierTypeFieldset);
         ui.show(ui.slackAPITokenInput);
         ui.show(ui.slackChannelIDInput);
         ui.show(ui.saveNotifierSettingsButton);
@@ -121,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function loadSettings() {
   try {
     const [
+      notifierType,
       slackAPIToken,
       slackChannelID,
       isWatching,
@@ -130,6 +146,7 @@ async function loadSettings() {
       isJunkTargeted,
       watchFirstPageOnly,
     ] = await Promise.all([
+      (async () => (await storage.get("notifierType")) ?? "chrome")(),
       (async () => (await storage.get("slackAPIToken")) ?? "")(),
       (async () => (await storage.get("slackChannelID")) ?? "")(),
       (async () => (await storage.get("isWatching")) ?? false)(),
@@ -150,6 +167,19 @@ async function loadSettings() {
 
     ui.disable(ui.applyConfigsButton);
     ui.checkInputFields();
+
+    if (notifierType === "chrome") {
+      ui.chromeNotifierRadio.checked = true;
+      ui.toggleSlackSettingsVisibility(false);
+      ui.enable(ui.saveNotifierSettingsButton);
+    } else if (notifierType === "slack") {
+      ui.slackNotifierRadio.checked = true;
+      if (hasSavedNotifierSettings) {
+        ui.toggleSlackSettingsVisibility(false);
+      } else {
+        ui.disable(ui.saveNotifierSettingsButton);
+      }
+    }
 
     if (watchFirstPageOnly) {
       ui.targetPageFirstRadio.checked = true;
@@ -184,11 +214,34 @@ async function loadSettings() {
 }
 
 async function initListeners() {
+  ui.notifierTypeFieldset.addEventListener("change", () => {
+    const checkedRadioButton = document.querySelector(
+      "input[name='notifier']:checked"
+    );
+    if (checkedRadioButton.id === ui.chromeNotifierRadio.id) {
+      ui.toggleSlackSettingsVisibility(false);
+      ui.enable(ui.saveNotifierSettingsButton);
+    } else if (checkedRadioButton.id === ui.slackNotifierRadio.id) {
+      ui.toggleSlackSettingsVisibility(true);
+      ui.checkInputFields();
+    }
+  });
+
   ui.slackAPITokenInput.addEventListener("input", () => ui.checkInputFields());
   ui.slackChannelIDInput.addEventListener("input", () => ui.checkInputFields());
 
   ui.changeNotifierSettingsButton.addEventListener("click", () => {
     ui.toggleConfigurationVisibility(false);
+    const checkedRadioButton = document.querySelector(
+      "input[name='notifier']:checked"
+    );
+    if (checkedRadioButton.id === ui.chromeNotifierRadio.id) {
+      ui.toggleSlackSettingsVisibility(false);
+      ui.enable(ui.saveNotifierSettingsButton);
+    } else if (checkedRadioButton.id === ui.slackNotifierRadio.id) {
+      ui.toggleSlackSettingsVisibility(true);
+      ui.checkInputFields();
+    }
   });
 
   ui.targetBaseURLInput.addEventListener("input", () => {
@@ -205,12 +258,23 @@ async function initListeners() {
   });
 
   ui.saveNotifierSettingsButton.addEventListener("click", async () => {
+    let notifierType;
+    const checkedRadioButton = document.querySelector(
+      "input[name='notifier']:checked"
+    );
+    if (checkedRadioButton.id === ui.chromeNotifierRadio.id) {
+      notifierType = "chrome";
+    } else if (checkedRadioButton.id === ui.slackNotifierRadio.id) {
+      notifierType = "slack";
+    }
+
     try {
       const response = await new Promise((resolve) => {
         chrome.runtime.sendMessage(
           {
             event: "onSaveNotifierSettingsButtonClicked",
             data: {
+              notifierType: notifierType,
               slackAPIToken: ui.slackAPITokenInput.value.trim(),
               slackChannelID: ui.slackChannelIDInput.value.trim(),
             },
@@ -220,7 +284,6 @@ async function initListeners() {
           }
         );
       });
-      console.log(response);
 
       if (!response.ok) {
         ui.slackAPITokenInput.value = "";
@@ -230,8 +293,23 @@ async function initListeners() {
         throw new Error(response.error);
       }
 
+      if (notifierType !== "slack") {
+        ui.slackAPITokenInput.value = "";
+        ui.slackChannelIDInput.value = "";
+        ui.checkInputFields();
+      }
+
       ui.toggleConfigurationVisibility(true);
-      alert("Notifier is set up successfully");
+      if (
+        ui.targetBaseURLInput.value !== "" ||
+        ui.targetBaseURLInput.value !== undefined
+      ) {
+        ui.disable(ui.applyConfigsButton);
+        ui.disable(ui.watchToggleButton);
+        ui.targetBaseURLInput.value = "";
+        await storage.set("targetBaseURL", "");
+      }
+      alert(`Notifier is set up successfully\nNotifier: ${notifierType}`);
     } catch (error) {
       const errorMsg = `failed to set notifier: ${error}`;
       console.error(errorMsg);

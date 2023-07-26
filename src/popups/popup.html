@@ -13,6 +13,34 @@
     <h1 class="text-3xl font-bold mb-4 text-gray-700">
       Mailnara Notifier <span id="version" class="text-sm"></span>
     </h1>
+    <fieldset
+      id="notifier-type"
+      class="w-full pt-1 pb-3 border border-gray-300 rounded-lg space-y-1"
+    >
+      <legend class="text-gray-600 text-base font-semibold text-center">
+        Notifier
+      </legend>
+      <div class="flex items-center justify-center space-x-4">
+        <div class="flex items-center">
+          <label class="mr-2 text-gray-600" for="chrome-notifier">Chrome</label>
+          <input
+            type="radio"
+            id="chrome-notifier"
+            name="notifier"
+            class="form-radio h-4 w-4 text-blue-600"
+          />
+        </div>
+        <div class="flex items-center">
+          <label class="mr-2 text-gray-600" for="slack-notifier">Slack</label>
+          <input
+            type="radio"
+            id="slack-notifier"
+            name="notifier"
+            class="form-radio h-4 w-4 text-blue-600"
+          />
+        </div>
+      </div>
+    </fieldset>
     <input
       type="text"
       id="slack-api-token"

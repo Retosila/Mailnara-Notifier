@@ -3,7 +3,7 @@ class Notifier {
     throw new Error("prepare() must be implemented");
   }
 
-  async notify() {
+  async notify(message) {
     throw new Error("notify() must be implemented");
   }
 }
@@ -99,5 +99,44 @@ class SlackNotifier extends Notifier {
     } catch (error) {
       throw new Error(`failed to notify: ${error}`);
     }
+  }
+}
+
+class ChromeNotifier extends Notifier {
+  type;
+  iconURL;
+  title;
+  isPrepared;
+
+  constructor() {
+    super();
+    this.type = "basic";
+    this.iconURL = "../assets/images/icon96.png";
+    this.title = "Mailnara Notifier";
+    this.isPrepared = false;
+  }
+
+  async prepare() {
+    this.isPrepared = true;
+  }
+
+  async notify(message) {
+    return new Promise((resolve, reject) => {
+      chrome.notifications.create(
+        {
+          type: this.type,
+          iconUrl: this.iconURL,
+          title: this.title,
+          message: message,
+        },
+        (notificationId) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(notificationId);
+          }
+        }
+      );
+    });
   }
 }
