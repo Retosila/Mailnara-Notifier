@@ -1,7 +1,7 @@
 # Mailnara Notifier (메일나라 알리미)
 
 삼정데이타서비스에서 제공하는 기업메일 및 그룹웨어 서비스인 _[메일나라](https://www.mailnara.co.kr/)_ 를 위한 알리미 앱(크롬 확장프로그램)입니다.  
-현재는 슬랙 API를 통한 알림 전송만 가능합니다.
+탐색 중인 메일나라 메일함에 새로운 메일이 도착하면 사용자가 지정해둔 방식(크롬, 슬랙)으로 알림 메시지가 자동 전송됩니다.
 
 ## 설치 방법
 
@@ -22,7 +22,7 @@ $ npm run build:prod
 
 ## 사용 방법
 
-1. 슬랙봇 API 토큰 및 알림을 받을 채널 ID를 입력 후 Save 버튼 클릭하여 저장해주세요. (슬랙봇 API 토큰 Slack API페이지에서 발급받을 수 있습니다.)
+1. 알림 방식을 선택하세요. Chrome을 선택할 경우 크롬 푸시 알림으로, Slack을 선택할 경우 Slack 메시지로 새로온 메일 알림이 발송됩니다. Slack을 선택할 경우 슬랙봇 API 토큰 및 알림을 받을 채널 ID를 입력 후 Save 버튼 클릭하여 저장해주세요. (슬랙봇 API 토큰 Slack API페이지에서 발급받을 수 있습니다.)
 2. 알림을 받아보길 원하는 메일나라 메일함의 기본 주소(Target Base URL)를 입력해주세요. 여기서 기본 주소란, 메일나라의 모든 메일함 주소들이 공통적으로 공유하는 주소를 말합니다.  
    예를 들어, 사용 중이신 메일나라의 받은 메일함 주소가 "https://mail.sds.co.kr/new_mailnara_web-v5.0/index.php/mail/mail_list/INBOX/0/50"이고 정크 메일 주소가  
    "https://mail.sds.co.kr/new_mailnara_web-v5.0/index.php/mail/mail_list/%EC%A0%95%ED%81%AC%20%EB%A9%94%EC%9D%BC/0/50"이라면 메일함의 기본 주소는  
