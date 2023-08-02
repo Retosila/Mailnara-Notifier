@@ -121,6 +121,8 @@ function keepAlive() {
       // Keep try to connect port when disconnected so as to keep service worker active.
       heartbeater();
     });
+
+    window.addEventListener("beforeunload", function (e) {});
   }
 
   async function injectHeartbeater() {
@@ -182,11 +184,31 @@ function keepAlive() {
 
   chrome.tabs.onUpdated.addListener(async (_, changeInfo, tab) => {
     if (changeInfo.status === "complete" && tab.url.startsWith("http")) {
+      if (tab.id === currentTabId) {
+        currentTabId = null;
+        console.debug("injected heartbeater is deactivated");
+      }
+
       await injectHeartbeater();
     }
   });
 
-  injectHeartbeater();
+  setInterval(async () => {
+    if (currentTabId) {
+      try {
+        await chrome.tabs.get(currentTabId);
+      } catch (e) {
+        console.debug("heartbeater tab is missing");
+        currentTabId = null;
+      }
+    }
+
+    await injectHeartbeater();
+  }, 25000);
+
+  (async () => {
+    await injectHeartbeater();
+  })();
 }
 
 function executeScriptsInTab(tabId, url, scripts) {
