@@ -1,7 +1,7 @@
 {
   "name": "mailnara-notifier",
   "author": "Retosila",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Notify of mailnara mail",
   "scripts": {
     "build:dev": "cross-env NODE_ENV=development node script.build.js",
