@@ -41,7 +41,7 @@ class Config {
 }
 
 class MailWatcher {
-  static DEBOUNCE_INTERVAL = 500;
+  static DEBOUNCE_INTERVAL = 1000;
 
   observer;
   config;
