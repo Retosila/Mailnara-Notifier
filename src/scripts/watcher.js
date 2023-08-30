@@ -46,14 +46,12 @@ class MailWatcher {
   observer;
   config;
   isWatching;
-  cache;
   debouncer;
 
   constructor(config) {
     this.isWatching = false;
     this.config = config;
     this.observer = null;
-    this.cache = null;
     this.debouncer = null;
   }
 
@@ -75,18 +73,10 @@ class MailWatcher {
           return;
         }
 
-        // Check any new mail has been received.
-        if (JSON.stringify(this.cache) === JSON.stringify(mailRows)) {
-          console.debug("no change is detected");
-          return;
-        }
-
         if (!(await this.isServiceRunning())) {
           console.info("service is not running");
           return;
         }
-
-        this.cache = mailRows;
 
         const newMails = mailRows.map(this.createMail);
         console.info(`new mails: ${newMails.length}`);
@@ -104,7 +94,6 @@ class MailWatcher {
             (response) => {
               if (!response.ok) {
                 console.error(`invalid response: ${response.error}`);
-                this.cache = null;
                 return;
               }
 
